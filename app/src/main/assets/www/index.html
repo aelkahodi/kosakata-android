@@ -317,29 +317,40 @@ const THEME_EMOJIS = {
 };
 
 // ══ INIT ══
+let _themeList = []; // liste ordonnée des thèmes pour accès par index
+
 (function init() {
   const counts = {};
   VOCABULARY.forEach(w => { counts[w.theme] = (counts[w.theme]||0)+1; });
   const themes = Object.entries(counts).sort((a,b)=>a[0].localeCompare(b[0]));
+  _themeList = themes.map(([t]) => t);
+
   const grid = document.getElementById('theme-grid');
-  grid.innerHTML = `<button class="theme-btn selected" onclick="selectTheme(null,this)" style="grid-column:span 2">
+  // On utilise des index numériques dans onclick pour éviter les problèmes de guillemets
+  grid.innerHTML = `<button class="theme-btn selected" onclick="selectTheme(-1)" style="grid-column:span 2">
     <span class="t-emoji">🗂️</span><span class="t-name">Tous les thèmes</span>
     <span class="t-count">${VOCABULARY.length}</span>
-  </button>` + themes.map(([t,c]) =>
-    `<button class="theme-btn" onclick="selectTheme(${JSON.stringify(t)},this)">
+  </button>` + themes.map(([t,c], i) =>
+    `<button class="theme-btn" onclick="selectTheme(${i})">
       <span class="t-emoji">${THEME_EMOJIS[t]||'📌'}</span>
       <span class="t-name">${t}</span>
       <span class="t-count">${c}</span>
     </button>`
   ).join('');
+
+  // Délégation d'événements — plus robuste que onclick inline
+  grid.addEventListener('click', function(e) {
+    const btn = e.target.closest('.theme-btn');
+    if (!btn) return;
+    document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+
   updatePreview();
-  
 })();
 
-function selectTheme(t, btn) {
-  selectedTheme = t;
-  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('selected'));
-  btn.classList.add('selected');
+function selectTheme(idx) {
+  selectedTheme = idx === -1 ? null : _themeList[idx];
   updatePreview();
 }
 
