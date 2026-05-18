@@ -598,7 +598,7 @@ function showGramResults(){
   circle.innerHTML=`${pct}%<span class="lbl">${sc} / ${total}</span>`;
   document.getElementById('gram-result-title').textContent=titles[lvl];
   document.getElementById('gram-result-sub').textContent=
-    `${sc} / ${total}${gramTolere>0?` (dont ${gramTolere} toléré${gramTolere>1?'s':'')})`:''}`; 
+    `${sc} / ${total}${gramTolere>0?` (dont ${gramTolere} toléré${gramTolere>1?'s':''})`:''}`; 
   const wl=document.getElementById('gram-wrong-list');
   wl.innerHTML=gramWrong.length
     ?`<h3>Exercices à revoir (${gramWrong.length})</h3>`+gramWrong.map(({ex,saisie})=>
