@@ -36,6 +36,10 @@
     .theme-btn .t-count{font-size:.7rem;color:var(--muted);flex-shrink:0;}
     .theme-btn.selected .t-count{color:var(--accent2);}
     .setup-footer{text-align:center;margin-top:6px;}
+    .count-selector{display:flex;gap:8px;justify-content:center;margin-bottom:16px;}
+    .count-btn{padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:.88rem;font-weight:600;transition:all .15s;}
+    .count-btn:hover{border-color:var(--accent2);color:var(--text);}
+    .count-btn.selected{border-color:var(--accent);background:rgba(108,99,255,.15);color:var(--accent2);}
     .word-preview{font-size:.82rem;color:var(--muted);margin-bottom:14px;min-height:18px;}
     .word-preview span{color:var(--accent2);font-weight:600;}
     .word-preview .warn{color:var(--yellow)!important;font-weight:600;}
@@ -254,6 +258,13 @@
     </div>
     <div class="section-lbl">Choisir une thématique</div>
     <div class="theme-grid" id="theme-grid"></div>
+    <div class="section-lbl" style="margin-top:18px">Nombre de mots</div>
+    <div class="count-selector" id="count-selector">
+      <button class="count-btn" onclick="selectCount(5,this)">5</button>
+      <button class="count-btn" onclick="selectCount(10,this)">10</button>
+      <button class="count-btn" onclick="selectCount(15,this)">15</button>
+      <button class="count-btn selected" onclick="selectCount(20,this)">20</button>
+    </div>
     <div class="setup-footer">
       <div class="word-preview" id="word-preview"></div>
       <button class="btn btn-primary" onclick="startQuiz()">&#9654; Démarrer le quiz</button>
@@ -620,7 +631,7 @@ function normalize(s){return s.trim().toLowerCase().replace(/\s+/g,' ');}
 
 let selectedTheme=null,quizWords=[],currentIndex=0;
 let correctCount=0,partialCount=0,wrongAnswers=[],answered=false;
-let _themeList=[];
+let _themeList=[],selectedCount=20;
 const STORAGE_KEY='kosakata_v4';
 
 const THEME_EMOJIS={
@@ -670,19 +681,26 @@ function initApp(){
 }
 
 function selectTheme(idx){selectedTheme=idx===-1?null:_themeList[idx];updatePreview();}
+function selectCount(n,btn){
+  selectedCount=n;
+  document.querySelectorAll('.count-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  updatePreview();
+}
 function updatePreview(){
   const pool=selectedTheme?VOCABULARY.filter(w=>w.theme===selectedTheme):VOCABULARY;
-  const n=pool.length,q=Math.min(n,20);
+  const available=pool.length;
+  const q=Math.min(available,selectedCount);
   const el=document.getElementById('word-preview');
-  el.innerHTML=n<20
-    ?`<span class="warn">${n} mots disponibles</span> — quiz sur les ${q} mots du thème`
-    :`<span>${n}</span> mots disponibles · 20 tirés au sort`;
+  el.innerHTML=available<=selectedCount
+    ?`<span class="warn">${available} mots disponibles</span> — quiz sur les ${q} mots du thème`
+    :`<span>${available}</span> mots disponibles · <span>${q}</span> tirés au sort`;
 }
 
 // ── QUIZ ──
 function startQuiz(){
   const pool=selectedTheme?VOCABULARY.filter(w=>w.theme===selectedTheme):VOCABULARY;
-  quizWords=[...pool].sort(()=>Math.random()-0.5).slice(0,20);
+  quizWords=[...pool].sort(()=>Math.random()-0.5).slice(0,selectedCount);
   currentIndex=0;correctCount=0;partialCount=0;wrongAnswers=[];
   document.getElementById('setup-panel').style.display='none';
   document.getElementById('results-panel').style.display='none';
