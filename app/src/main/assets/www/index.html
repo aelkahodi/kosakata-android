@@ -244,6 +244,17 @@
     .quest-node.locked{opacity:.45;}
     @keyframes qpulse{0%,100%{box-shadow:0 0 0 0 rgba(108,99,255,.35);}50%{box-shadow:0 0 0 7px rgba(108,99,255,0);}}
 
+    
+    /* ── BACKUP ── */
+    .backup-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-top:20px;}
+    .backup-wrap h3{font-size:.73rem;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em;}
+    .backup-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+    .backup-area{width:100%;min-height:90px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:.75rem;font-family:monospace;outline:none;resize:vertical;display:none;}
+    .backup-area.show{display:block;}
+    .backup-msg{font-size:.78rem;margin-top:8px;min-height:16px;}
+    .backup-msg.ok{color:var(--green);}
+    .backup-msg.err{color:var(--red);}
+
     html,body{height:100%;overflow:hidden;}
     body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
     nav{display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -376,6 +387,17 @@
         <tbody id="history-body"></tbody>
       </table>
     </div>
+  </div>
+  <div class="backup-wrap">
+    <h3>Sauvegarde des données</h3>
+    <div class="backup-actions">
+      <button class="btn btn-secondary" onclick="exportBackup()">&#8593; Exporter</button>
+      <button class="btn btn-secondary" onclick="showImport()">&#8595; Importer</button>
+      <button class="btn btn-primary" id="backup-import-btn" onclick="importBackup()" style="display:none">Restaurer</button>
+    </div>
+    <textarea id="backup-area" class="backup-area" spellcheck="false"
+      placeholder="Collez ici votre sauvegarde puis appuyez sur Restaurer"></textarea>
+    <div class="backup-msg" id="backup-msg"></div>
   </div>
 </div>
 <div id="grammaire" class="page">
@@ -1085,6 +1107,49 @@ function startQuestLevel(ti,li){
   document.getElementById('results-panel').style.display='none';
   document.getElementById('quiz-active').style.display='block';
   showQuestion();
+}
+
+// ── BACKUP ──
+const BACKUP_KEYS=[STORAGE_KEY,QUEST_KEY];
+function exportBackup(){
+  const data={};
+  BACKUP_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v)data[k]=v;});
+  const payload=JSON.stringify({app:'kosakata',date:new Date().toISOString(),data});
+  const ta=document.getElementById('backup-area');
+  ta.value=payload;ta.classList.add('show');
+  document.getElementById('backup-import-btn').style.display='none';
+  ta.focus();ta.select();
+  let copied=false;
+  try{copied=document.execCommand('copy');}catch(e){}
+  const msg=document.getElementById('backup-msg');
+  msg.className='backup-msg ok';
+  msg.textContent=copied?'✓ Sauvegarde copiée dans le presse-papiers — collez-la dans une note.':'Sélectionnez le texte ci-dessus et copiez-le dans une note.';
+}
+function showImport(){
+  const ta=document.getElementById('backup-area');
+  ta.value='';ta.classList.add('show');ta.focus();
+  document.getElementById('backup-import-btn').style.display='inline-flex';
+  const msg=document.getElementById('backup-msg');
+  msg.className='backup-msg';
+  msg.textContent='Collez votre sauvegarde puis appuyez sur Restaurer.';
+}
+function importBackup(){
+  const msg=document.getElementById('backup-msg');
+  try{
+    const payload=JSON.parse(document.getElementById('backup-area').value.trim());
+    if(payload.app!=='kosakata'||!payload.data)throw new Error('format');
+    let n=0;
+    Object.entries(payload.data).forEach(([k,v])=>{
+      if(BACKUP_KEYS.includes(k)){JSON.parse(v);localStorage.setItem(k,v);n++;}
+    });
+    if(!n)throw new Error('vide');
+    msg.className='backup-msg ok';
+    msg.textContent='✓ Données restaurées ('+n+' éléments). Rechargement…';
+    setTimeout(()=>location.reload(),900);
+  }catch(e){
+    msg.className='backup-msg err';
+    msg.textContent='✗ Sauvegarde invalide — vérifiez le texte collé.';
+  }
 }
 
 // ── TABS ──

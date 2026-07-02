@@ -10,17 +10,36 @@ android {
         applicationId "com.kosakata.app"
         minSdk 21
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        // versionCode horodaté (yyMMddHH) : chaque build est une mise à jour
+        // valide de la précédente, l'app s'installe par-dessus sans désinstaller
+        versionCode Integer.parseInt(new Date().format('yyMMddHH'))
+        versionName new Date().format('yyyy.MM.dd')
+    }
+
+    // Clé de signature stable : fournie hors du dépôt (fichier local ou
+    // secret CI décodé avant le build). Sans elle, clé debug par défaut.
+    def sharedKeystore = rootProject.file('kosakata.keystore')
+    if (sharedKeystore.exists()) {
+        signingConfigs {
+            shared {
+                storeFile sharedKeystore
+                storeType 'PKCS12'
+                storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'kosakata2026'
+                keyAlias 'kosakata'
+                keyPassword System.getenv('KEYSTORE_PASSWORD') ?: 'kosakata2026'
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            if (sharedKeystore.exists()) signingConfig signingConfigs.shared
         }
         debug {
             applicationIdSuffix ""
             debuggable true
+            if (sharedKeystore.exists()) signingConfig signingConfigs.shared
         }
     }
 
