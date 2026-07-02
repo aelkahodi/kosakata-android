@@ -224,6 +224,26 @@
     .qcm-option.qcm-wrong{border-color:var(--red)!important;background:rgba(239,68,68,.1)!important;color:var(--red)!important;}
     .qcm-option:disabled{cursor:default;}
 
+    
+    /* ── QUEST ── */
+    .quest-summary{font-size:.8rem;color:var(--muted);margin-bottom:18px;}
+    .quest-summary span{color:var(--accent2);font-weight:600;}
+    .quest-theme{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;}
+    .quest-theme-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+    .quest-theme-emoji{font-size:1.3rem;}
+    .quest-theme-name{font-weight:700;flex:1;font-size:.95rem;}
+    .quest-theme-prog{font-size:.75rem;color:var(--muted);}
+    .quest-theme-prog.full{color:var(--green);font-weight:700;}
+    .quest-bar{height:5px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-bottom:12px;}
+    .quest-bar-fill{height:100%;background:linear-gradient(90deg,var(--green),#4ade80);border-radius:99px;transition:width .4s;}
+    .quest-levels{display:flex;flex-wrap:wrap;gap:8px;}
+    .quest-node{width:52px;height:52px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;border:2px solid var(--border);background:var(--surface2);color:var(--muted);cursor:default;transition:all .15s;}
+    .quest-node .qn-sub{font-size:.55rem;font-weight:400;color:var(--muted);margin-top:1px;}
+    .quest-node.done{border-color:var(--green);background:rgba(34,197,94,.12);color:var(--green);cursor:pointer;}
+    .quest-node.open{border-color:var(--accent);background:rgba(108,99,255,.15);color:var(--text);cursor:pointer;animation:qpulse 2s infinite;}
+    .quest-node.locked{opacity:.45;}
+    @keyframes qpulse{0%,100%{box-shadow:0 0 0 0 rgba(108,99,255,.35);}50%{box-shadow:0 0 0 7px rgba(108,99,255,0);}}
+
     html,body{height:100%;overflow:hidden;}
     body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
     nav{display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -247,6 +267,7 @@
   <button id="tab-quiz" class="active" onclick="showTab('quiz')">Quiz</button>
   <button id="tab-dict" onclick="showTab('dictionnaire')">Dico</button>
   <button id="tab-dash" onclick="showTab('dashboard')">Stats</button>
+  <button id="tab-quest" onclick="showTab('quest')">Quest</button>
   <button id="tab-gram" onclick="showTab('grammaire')">Grammaire</button>
 </nav>
 <div id="quiz" class="page active">
@@ -316,6 +337,12 @@
       <button class="btn btn-secondary" onclick="showTab('dashboard')">&#128202; Stats</button>
     </div>
   </div>
+</div>
+<div id="quest" class="page">
+  <h1>Quest 🗺️</h1>
+  <p class="sub">Avancez thème par thème, niveau par niveau — 100&nbsp;% requis pour débloquer le suivant</p>
+  <div class="quest-summary" id="quest-summary"></div>
+  <div id="quest-map"></div>
 </div>
 <div id="dictionnaire" class="page">
   <h1>Dictionnaire</h1>
@@ -699,6 +726,7 @@ function updatePreview(){
 
 // ── QUIZ ──
 function startQuiz(){
+  questActive=null;
   const pool=selectedTheme?VOCABULARY.filter(w=>w.theme===selectedTheme):VOCABULARY;
   quizWords=[...pool].sort(()=>Math.random()-0.5).slice(0,selectedCount);
   currentIndex=0;correctCount=0;partialCount=0;wrongAnswers=[];
@@ -853,9 +881,33 @@ function showResults(){
           <div><div class="idn">${w.accepted.join(' · ')}</div><div class="user-ans">${w.userAns||'(vide)'}</div></div>
         </div>`).join(''):'';
   saveSession(finalScore,pct,selectedTheme,total);
+  // Quest : enregistrer la progression et adapter les actions
+  const ra=document.querySelector('#results-panel .results-actions');
+  if(questActive){
+    const perfect=finalScore===total;
+    const qp=getQuestProgress();
+    const qkey=questActive.theme+'|'+questActive.level;
+    const prev=qp[qkey]||{best:0,done:false};
+    prev.best=Math.max(prev.best,pct);
+    if(perfect)prev.done=true;
+    qp[qkey]=prev;saveQuestProgress(qp);
+    const nLevels=questChunks(questActive.theme).length;
+    const isLast=questActive.level>=nLevels-1;
+    const ti=questThemes().indexOf(questActive.theme);
+    document.getElementById('result-sub').textContent+=perfect?(isLast?' — 🏆 Thème terminé !':' — 🔓 Niveau suivant débloqué !'):' — 🔒 100% requis pour débloquer la suite';
+    let btns='';
+    if(perfect&&!isLast)btns+='<button class="btn btn-primary" onclick="startQuestLevel('+ti+','+(questActive.level+1)+')">Niveau suivant →</button>';
+    btns+='<button class="btn '+(perfect?'btn-secondary':'btn-primary')+'" onclick="startQuestLevel('+ti+','+questActive.level+')">↻ Rejouer le niveau</button>';
+    btns+='<button class="btn btn-secondary" onclick="showTab(\'quest\')">🗺️ Carte des quêtes</button>';
+    ra.innerHTML=btns;
+  } else {
+    ra.innerHTML='<button class="btn btn-primary" onclick="startQuiz()">↻ Rejouer</button>'+
+      '<button class="btn btn-secondary" onclick="backToSetup()">← Thèmes</button>'+
+      '<button class="btn btn-secondary" onclick="showTab(\'dashboard\')">📊 Stats</button>';
+  }
 }
 
-function backToSetup(){document.getElementById('results-panel').style.display='none';document.getElementById('setup-panel').style.display='block';}
+function backToSetup(){questActive=null;document.getElementById('results-panel').style.display='none';document.getElementById('setup-panel').style.display='block';}
 
 // ── DICTIONNAIRE ──
 let _dictExpanded=new Set();
@@ -969,16 +1021,83 @@ function renderDashboard(){
   }).join('');
 }
 
+// ── QUEST ──
+const QUEST_SIZE=10;
+const QUEST_KEY='kosakata_quest_v1';
+let questActive=null,_questThemes=[];
+function questThemes(){
+  if(!_questThemes.length)_questThemes=[...new Set(VOCABULARY.map(w=>w.theme))].sort((a,b)=>a.localeCompare(b));
+  return _questThemes;
+}
+function questChunks(theme){
+  const words=VOCABULARY.filter(w=>w.theme===theme);
+  const chunks=[];
+  for(let i=0;i<words.length;i+=QUEST_SIZE)chunks.push(words.slice(i,i+QUEST_SIZE));
+  return chunks;
+}
+function getQuestProgress(){try{return JSON.parse(localStorage.getItem(QUEST_KEY))||{};}catch(e){return{};}}
+function saveQuestProgress(p){localStorage.setItem(QUEST_KEY,JSON.stringify(p));}
+
+function renderQuestMap(){
+  const themes=questThemes();
+  const p=getQuestProgress();
+  let totalDone=0,totalLevels=0;
+  const html=themes.map((theme,ti)=>{
+    const chunks=questChunks(theme);
+    let doneCount=0;
+    const nodes=chunks.map((chunk,li)=>{
+      const st=p[theme+'|'+li]||{};
+      const done=!!st.done;
+      if(done)doneCount++;
+      const unlocked=li===0||!!((p[theme+'|'+(li-1)]||{}).done);
+      const cls=done?'done':unlocked?'open':'locked';
+      const inner=done?'⭐':unlocked?(li+1):'🔒';
+      const click=(done||unlocked)?` onclick="startQuestLevel(${ti},${li})"`:'';
+      return `<div class="quest-node ${cls}"${click}>${inner}<span class="qn-sub">${chunk.length} mots</span></div>`;
+    }).join('');
+    totalDone+=doneCount;totalLevels+=chunks.length;
+    const pctT=Math.round((doneCount/chunks.length)*100);
+    const progCls=doneCount===chunks.length?'quest-theme-prog full':'quest-theme-prog';
+    return `<div class="quest-theme">
+      <div class="quest-theme-head">
+        <span class="quest-theme-emoji">${THEME_EMOJIS[theme]||'📌'}</span>
+        <span class="quest-theme-name">${theme}</span>
+        <span class="${progCls}">${doneCount===chunks.length?'🏆 ':''}${doneCount}/${chunks.length}</span>
+      </div>
+      <div class="quest-bar"><div class="quest-bar-fill" style="width:${pctT}%"></div></div>
+      <div class="quest-levels">${nodes}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('quest-summary').innerHTML=`<span>${totalDone}</span> / ${totalLevels} niveaux terminés · ${QUEST_SIZE} mots par niveau`;
+  document.getElementById('quest-map').innerHTML=html;
+}
+
+function startQuestLevel(ti,li){
+  const theme=questThemes()[ti];
+  const chunks=questChunks(theme);
+  if(!chunks[li])return;
+  questActive={theme,level:li};
+  selectedTheme=theme;
+  quizWords=[...chunks[li]].sort(()=>Math.random()-0.5);
+  currentIndex=0;correctCount=0;partialCount=0;wrongAnswers=[];
+  showTab('quiz');
+  document.getElementById('setup-panel').style.display='none';
+  document.getElementById('results-panel').style.display='none';
+  document.getElementById('quiz-active').style.display='block';
+  showQuestion();
+}
+
 // ── TABS ──
 function showTab(tab){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   document.getElementById(tab).classList.add('active');
-  const tabId=tab==='dashboard'?'dash':tab==='dictionnaire'?'dict':tab==='grammaire'?'gram':'quiz';
+  const tabId=tab==='dashboard'?'dash':tab==='dictionnaire'?'dict':tab==='grammaire'?'gram':tab==='quest'?'quest':'quiz';
   document.getElementById('tab-'+tabId).classList.add('active');
   if(tab==='dashboard')renderDashboard();
   if(tab==='dictionnaire')renderDict();
   if(tab==='grammaire'&&!document.getElementById('gram-type-grid').children.length)initGrammar();
+  if(tab==='quest')renderQuestMap();
 }
 
 initApp();
