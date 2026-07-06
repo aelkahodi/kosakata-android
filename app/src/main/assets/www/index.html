@@ -298,6 +298,30 @@
     .lc-navrow button:disabled{opacity:.3;cursor:default;}
 
 
+    
+    /* ── AUJOURD'HUI ── */
+    .today-strip{margin-bottom:22px;}
+    .streak-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin-bottom:10px;}
+    .streak-flame{font-size:1.7rem;line-height:1;filter:grayscale(1);opacity:.45;}
+    .streak-row.active .streak-flame{filter:none;opacity:1;}
+    .streak-num{font-size:1.35rem;font-weight:800;color:var(--muted);}
+    .streak-row.active .streak-num{color:var(--yellow);}
+    .streak-meta{flex:1;font-size:.78rem;color:var(--muted);line-height:1.35;}
+    .streak-best{font-size:.72rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:3px 10px;flex-shrink:0;}
+    .continue-card{display:flex;align-items:center;gap:13px;background:linear-gradient(135deg,rgba(108,99,255,.16),rgba(108,99,255,.05));border:1px solid var(--accent);border-radius:14px;padding:14px 16px;cursor:pointer;transition:transform .12s;}
+    .continue-card:active{transform:scale(.98);}
+    .continue-emoji{font-size:1.8rem;flex-shrink:0;}
+    .continue-main{flex:1;min-width:0;}
+    .continue-kicker{font-size:.68rem;color:var(--accent2);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:2px;}
+    .continue-title{font-weight:700;font-size:.95rem;}
+    .continue-sub{font-size:.76rem;color:var(--muted);margin-top:2px;}
+    .continue-bar{height:4px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-top:7px;}
+    .continue-bar-fill{height:100%;background:linear-gradient(90deg,var(--green),#4ade80);border-radius:99px;}
+    .continue-go{font-size:1.3rem;color:var(--accent2);flex-shrink:0;}
+    .today-lesson{display:block;width:100%;text-align:left;margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 16px;color:var(--muted);cursor:pointer;font-size:.8rem;transition:border-color .15s;}
+    .today-lesson:hover{border-color:var(--accent2);}
+    .today-lesson strong{color:var(--text);}
+
     html,body{height:100%;overflow:hidden;}
     body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
     nav{display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -336,6 +360,7 @@
 </nav>
 <div id="quiz" class="page active">
   <div id="setup-panel">
+    <div class="today-strip" id="today-strip"></div>
     <div class="setup-header">
       <h1>Kosakata 🇮🇩</h1>
       <p>Traduisez de l'anglais vers l'indonésien</p>
@@ -710,6 +735,7 @@ function nextGram(){
 }
 
 function showGramResults(){
+  touchStreak();
   document.getElementById('gram-active').style.display='none';
   document.getElementById('gram-results').style.display='block';
   const total=gramExercices.length;
@@ -947,6 +973,7 @@ function handleAnswer(){
 function nextQuestion(){currentIndex++;if(currentIndex>=quizWords.length)showResults();else showQuestion();}
 
 function showResults(){
+  touchStreak();
   document.getElementById('quiz-active').style.display='none';
   document.getElementById('results-panel').style.display='block';
   const total=quizWords.length;
@@ -998,7 +1025,7 @@ function showResults(){
   }
 }
 
-function backToSetup(){questActive=null;document.getElementById('results-panel').style.display='none';document.getElementById('setup-panel').style.display='block';}
+function backToSetup(){questActive=null;renderToday();document.getElementById('results-panel').style.display='none';document.getElementById('setup-panel').style.display='block';}
 
 // ── DICTIONNAIRE ──
 let _dictExpanded=new Set();
@@ -1168,6 +1195,7 @@ function startQuestLevel(ti,li){
   const chunks=questChunks(theme);
   if(!chunks[li])return;
   questActive={theme,level:li};
+  localStorage.setItem(LASTQ_KEY,JSON.stringify({ti}));
   selectedTheme=theme;
   quizWords=[...chunks[li]].sort(()=>Math.random()-0.5);
   currentIndex=0;correctCount=0;partialCount=0;wrongAnswers=[];
@@ -1260,8 +1288,89 @@ function trainFromLesson(type){
   startGramQuiz();
 }
 
+// ── AUJOURD'HUI : STREAK + REPRISE ──
+const STREAK_KEY='kosakata_streak_v1';
+const LASTQ_KEY='kosakata_lastquest_v1';
+function _dstr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function getStreak(){try{return JSON.parse(localStorage.getItem(STREAK_KEY))||{};}catch(e){return{};}}
+function touchStreak(){
+  const s=getStreak();
+  const t=_dstr(new Date()),y=_dstr(new Date(Date.now()-864e5));
+  if(s.last===t)return;
+  s.count=s.last===y?(s.count||0)+1:1;
+  s.best=Math.max(s.best||0,s.count);
+  s.last=t;
+  localStorage.setItem(STREAK_KEY,JSON.stringify(s));
+}
+function nextQuestTarget(){
+  const p=getQuestProgress();
+  const themes=questThemes();
+  // 1) Dernière quête jouée : niveau ouvert suivant dans ce thème
+  let last=null;
+  try{last=JSON.parse(localStorage.getItem(LASTQ_KEY));}catch(e){}
+  const cands=[];
+  themes.forEach((theme,ti)=>{
+    const chunks=questChunks(theme);
+    let done=0;
+    for(let li=0;li<chunks.length;li++){
+      if((p[theme+'|'+li]||{}).done){done++;continue;}
+      // premier niveau non terminé ; ouvert si li===0 ou précédent done
+      if(li===0||(p[theme+'|'+(li-1)]||{}).done){
+        cands.push({ti,li,theme,done,total:chunks.length,size:chunks[li].length});
+      }
+      break;
+    }
+  });
+  if(!cands.length)return null; // tout terminé !
+  if(last){const m=cands.find(c=>c.ti===last.ti);if(m)return m;}
+  // Sinon : thème le plus avancé (mais pas fini), sinon le premier
+  cands.sort((a,b)=>b.done-a.done);
+  return cands[0];
+}
+function renderToday(){
+  const el=document.getElementById('today-strip');
+  if(!el)return;
+  const s=getStreak();
+  const t=_dstr(new Date()),y=_dstr(new Date(Date.now()-864e5));
+  const activeToday=s.last===t;
+  const alive=activeToday||s.last===y;
+  const count=alive?(s.count||0):0;
+  const msg=activeToday?'Série en cours — reviens demain pour continuer !'
+    :s.last===y?'Joue aujourd\'hui pour prolonger ta série !'
+    :'Lance une session pour démarrer ta série.';
+  let html=`<div class="streak-row${activeToday?' active':''}">
+    <span class="streak-flame">&#128293;</span>
+    <span class="streak-num">${count}</span>
+    <span class="streak-meta">jour${count>1?'s':''} d'affilée<br>${msg}</span>
+    ${s.best?`<span class="streak-best">Record ${s.best}</span>`:''}
+  </div>`;
+  const q=nextQuestTarget();
+  if(q){
+    const pctT=Math.round(q.done/q.total*100);
+    const started=q.done>0;
+    html+=`<div class="continue-card" onclick="startQuestLevel(${q.ti},${q.li})">
+      <span class="continue-emoji">${THEME_EMOJIS[q.theme]||'&#128204;'}</span>
+      <div class="continue-main">
+        <div class="continue-kicker">${started?'Continue ta qu&ecirc;te':'Commence une qu&ecirc;te'}</div>
+        <div class="continue-title">${q.theme}</div>
+        <div class="continue-sub">Niveau ${q.li+1} / ${q.total} &middot; ${q.size} mots</div>
+        <div class="continue-bar"><div class="continue-bar-fill" style="width:${pctT}%"></div></div>
+      </div>
+      <span class="continue-go">&#9654;</span>
+    </div>`;
+  }
+  const read=getLessonsRead();
+  const nextL=LESSONS.findIndex(l=>!read[l.id]);
+  if(nextL!==-1){
+    const l=LESSONS[nextL];
+    html+=`<button class="today-lesson" onclick="showTab('grammaire');setGramView('lecons');openLesson(${nextL})">
+      ${l.emoji} Le&ccedil;on suivante : <strong>${l.titre}</strong> &#8594;</button>`;
+  }
+  el.innerHTML=html;
+}
+
 // ── BACKUP ──
-const BACKUP_KEYS=[STORAGE_KEY,QUEST_KEY,LESSON_KEY];
+const BACKUP_KEYS=[STORAGE_KEY,QUEST_KEY,LESSON_KEY,STREAK_KEY,LASTQ_KEY];
 function exportBackup(){
   const data={};
   BACKUP_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v)data[k]=v;});
@@ -1314,10 +1423,12 @@ function showTab(tab){
   if(tab==='dictionnaire')renderDict();
   if(tab==='grammaire'&&!document.getElementById('gram-type-grid').children.length)initGrammar();
   if(tab==='quest')renderQuestMap();
+  if(tab==='quiz')renderToday();
   if(tab==='grammaire'&&document.getElementById('lecons-panel').style.display!=='none'&&!_leconOpen&&_leconOpen!==0)renderLessonList();
 }
 
 initApp();
+renderToday();
 </script>
 </body>
 </html>
