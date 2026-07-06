@@ -322,6 +322,12 @@
     .today-lesson:hover{border-color:var(--accent2);}
     .today-lesson strong{color:var(--text);}
 
+    
+    /* ── RÉVISION ── */
+    .review-card{display:block;width:100%;text-align:left;margin-top:10px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.35);border-radius:12px;padding:12px 16px;color:var(--text);cursor:pointer;font-size:.85rem;transition:all .15s;}
+    .review-card:hover{border-color:var(--red);}
+    .review-card .review-count{color:var(--red);font-weight:700;}
+
     html,body{height:100%;overflow:hidden;}
     body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
     nav{display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -775,6 +781,7 @@ let _themeList=[],selectedCount=20;
 const STORAGE_KEY='kosakata_v4';
 
 const THEME_EMOJIS={
+  'Révision':'🔁',
   'Verbes en ber-':'🚶','Verbes en me-':'⚡','Verbes en di-':'🔄',
   'Verbes en ter-':'🌀','Verbes en me-...-kan':'🎁','Verbes en di-...-kan':'📦',
   'Verbes en me-...-i':'🎯','Verbes en di-...-i':'🪃','Verbes en memper-':'📈',
@@ -843,7 +850,7 @@ function updatePreview(){
 
 // ── QUIZ ──
 function startQuiz(){
-  questActive=null;
+  questActive=null;reviewActive=false;
   const pool=selectedTheme?VOCABULARY.filter(w=>w.theme===selectedTheme):VOCABULARY;
   quizWords=[...pool].sort(()=>Math.random()-0.5).slice(0,selectedCount);
   currentIndex=0;correctCount=0;partialCount=0;wrongAnswers=[];
@@ -904,6 +911,7 @@ function handleAnswer(){
 
   if(exact){
     correctCount++;
+    reviewSuccess(w.id);
     inp.className='answer-input correct';
     fb.className='feedback-main correct';
     if(accepted.length>1){
@@ -929,6 +937,7 @@ function handleAnswer(){
       ${exId}</div>`;
   } else {
     wrongAnswers.push({eng:w.anglais,fra:w.francais,idn:w.indonesien,accepted,userAns,synMap});
+    addToReview(w.id);
     inp.className='answer-input wrong';
     fb.className='feedback-main wrong';
     const answersHtml=accepted.map(a=>{
@@ -998,7 +1007,7 @@ function showResults(){
           <div><div class="eng">${w.eng}</div><div class="fra">${w.fra}</div></div>
           <div><div class="idn">${w.accepted.join(' · ')}</div><div class="user-ans">${w.userAns||'(vide)'}</div></div>
         </div>`).join(''):'';
-  saveSession(finalScore,pct,selectedTheme,total);
+  saveSession(finalScore,pct,reviewActive?'Révision':selectedTheme,total);
   // Quest : enregistrer la progression et adapter les actions
   const ra=document.querySelector('#results-panel .results-actions');
   if(questActive){
@@ -1018,6 +1027,13 @@ function showResults(){
     btns+='<button class="btn '+(perfect?'btn-secondary':'btn-primary')+'" onclick="startQuestLevel('+ti+','+questActive.level+')">↻ Rejouer le niveau</button>';
     btns+='<button class="btn btn-secondary" onclick="showTab(\'quest\')">🗺️ Carte des quêtes</button>';
     ra.innerHTML=btns;
+  } else if(reviewActive){
+    const nrev=reviewCount();
+    ra.innerHTML=(nrev
+      ?'<button class="btn btn-primary" onclick="startReviewQuiz()">🔁 Réviser encore ('+nrev+')</button>'
+      :'<div style="width:100%;text-align:center;color:var(--green);font-size:.9rem;margin-bottom:6px">🎉 Plus aucun mot à réviser !</div>')+
+      '<button class="btn btn-secondary" onclick="backToSetup()">← Accueil</button>'+
+      '<button class="btn btn-secondary" onclick="showTab(\'dashboard\')">📊 Stats</button>';
   } else {
     ra.innerHTML='<button class="btn btn-primary" onclick="startQuiz()">↻ Rejouer</button>'+
       '<button class="btn btn-secondary" onclick="backToSetup()">← Thèmes</button>'+
@@ -1194,6 +1210,7 @@ function startQuestLevel(ti,li){
   const theme=questThemes()[ti];
   const chunks=questChunks(theme);
   if(!chunks[li])return;
+  reviewActive=false;
   questActive={theme,level:li};
   localStorage.setItem(LASTQ_KEY,JSON.stringify({ti}));
   selectedTheme=theme;
@@ -1288,6 +1305,30 @@ function trainFromLesson(type){
   startGramQuiz();
 }
 
+// ── RÉVISION INTELLIGENTE ──
+const REVIEW_KEY='kosakata_review_v1';
+let reviewActive=false;
+function getReview(){try{return JSON.parse(localStorage.getItem(REVIEW_KEY))||{};}catch(e){return{};}}
+function saveReview(r){localStorage.setItem(REVIEW_KEY,JSON.stringify(r));}
+function addToReview(id){const r=getReview();r[id]={need:2,t:(r[id]&&r[id].t)||Date.now()};saveReview(r);}
+function reviewSuccess(id){const r=getReview();if(!r[id])return;r[id].need--;if(r[id].need<=0)delete r[id];saveReview(r);}
+function reviewCount(){return Object.keys(getReview()).length;}
+function startReviewQuiz(){
+  const r=getReview();
+  const ids=Object.keys(r).sort((a,b)=>r[a].t-r[b].t).slice(0,20).map(Number);
+  const byId={};VOCABULARY.forEach(w=>byId[w.id]=w);
+  const words=ids.map(id=>byId[id]).filter(Boolean);
+  if(!words.length)return;
+  questActive=null;reviewActive=true;selectedTheme=null;
+  quizWords=[...words].sort(()=>Math.random()-0.5);
+  currentIndex=0;correctCount=0;partialCount=0;wrongAnswers=[];
+  showTab('quiz');
+  document.getElementById('setup-panel').style.display='none';
+  document.getElementById('results-panel').style.display='none';
+  document.getElementById('quiz-active').style.display='block';
+  showQuestion();
+}
+
 // ── AUJOURD'HUI : STREAK + REPRISE ──
 const STREAK_KEY='kosakata_streak_v1';
 const LASTQ_KEY='kosakata_lastquest_v1';
@@ -1359,6 +1400,10 @@ function renderToday(){
       <span class="continue-go">&#9654;</span>
     </div>`;
   }
+  const nrev=reviewCount();
+  if(nrev){
+    html+=`<button class="review-card" onclick="startReviewQuiz()">&#128257; <strong>R&eacute;viser mes erreurs</strong> &middot; <span class="review-count">${nrev} mot${nrev>1?'s':''}</span> &#8594;</button>`;
+  }
   const read=getLessonsRead();
   const nextL=LESSONS.findIndex(l=>!read[l.id]);
   if(nextL!==-1){
@@ -1370,7 +1415,7 @@ function renderToday(){
 }
 
 // ── BACKUP ──
-const BACKUP_KEYS=[STORAGE_KEY,QUEST_KEY,LESSON_KEY,STREAK_KEY,LASTQ_KEY];
+const BACKUP_KEYS=[STORAGE_KEY,QUEST_KEY,LESSON_KEY,STREAK_KEY,LASTQ_KEY,REVIEW_KEY];
 function exportBackup(){
   const data={};
   BACKUP_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v)data[k]=v;});
