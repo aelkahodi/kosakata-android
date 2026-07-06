@@ -328,6 +328,23 @@
     .review-card:hover{border-color:var(--red);}
     .review-card .review-count{color:var(--red);font-weight:700;}
 
+    
+    /* ── EFFETS ── */
+    @keyframes kshake{10%,90%{transform:translateX(-2px);}20%,80%{transform:translateX(3px);}30%,50%,70%{transform:translateX(-5px);}40%,60%{transform:translateX(5px);}}
+    .shake{animation:kshake .45s ease;}
+    @keyframes kpopin{0%{transform:scale(.94);opacity:.6;}60%{transform:scale(1.02);}100%{transform:scale(1);opacity:1;}}
+    .feedback-main.correct,.feedback-main.partial,.feedback-main.wrong{animation:kpopin .28s ease;}
+    .confetti-p{position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:99;}
+
+    
+    /* ── QUEST REPLIABLE ── */
+    .quest-theme-head{cursor:pointer;user-select:none;}
+    .quest-toggle{font-size:.72rem;color:var(--muted);transition:transform .2s;margin-left:2px;flex-shrink:0;}
+    .quest-theme.collapsed .quest-toggle{transform:rotate(-90deg);}
+    .quest-theme.collapsed .quest-levels{display:none;}
+    .quest-theme.collapsed .quest-bar{margin-bottom:0;}
+    .quest-theme.collapsed{padding-bottom:13px;}
+
     html,body{height:100%;overflow:hidden;}
     body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
     nav{display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -694,7 +711,7 @@ function submitGram(){
   if(!isQCM){
     const inp=document.getElementById('gram-input');
     inp.disabled=true;
-    inp.className='answer-input '+(result==='correct'?'correct':result==='tolere'?'partial':'wrong');
+    inp.className='answer-input '+(result==='correct'?'correct':result==='tolere'?'partial':'wrong shake');
   }
   if(isQCM){
     const qcm=document.getElementById('gram-qcm');
@@ -706,6 +723,11 @@ function submitGram(){
       else if(isSelected)btn.classList.add('qcm-wrong');
       btn.disabled=true;
     });
+  }
+  haptic(result==='correct'?'correct':result==='tolere'?'partial':'wrong');
+  if(result==='correct'){
+    const target=isQCM?document.querySelector('.qcm-option.qcm-correct'):document.getElementById('gram-input');
+    burstConfetti(target,14);
   }
   const fb=document.getElementById('gram-feedback');
   const icon=result==='correct'?'✅':result==='tolere'?'🟡':'✗';
@@ -753,6 +775,7 @@ function showGramResults(){
   const circle=document.getElementById('gram-score-circle');
   circle.className=`score-circle ${lvl}`;
   circle.innerHTML=`${pct}%<span class="lbl">${sc} / ${total}</span>`;
+  if(pct>=80)setTimeout(()=>burstConfetti(circle,pct===100?36:20),200);
   document.getElementById('gram-result-title').textContent=titles[lvl];
   document.getElementById('gram-result-sub').textContent=
     `${sc} / ${total}${gramTolere>0?` (dont ${gramTolere} toléré${gramTolere>1?'s':''})`:''}`; 
@@ -913,6 +936,7 @@ function handleAnswer(){
     correctCount++;
     reviewSuccess(w.id);
     inp.className='answer-input correct';
+    haptic('correct');burstConfetti(inp,14);
     fb.className='feedback-main correct';
     if(accepted.length>1){
       const others=accepted.filter(a=>normalize(a)!==normalize(userAns));
@@ -927,6 +951,7 @@ function handleAnswer(){
   } else if(partial){
     partialCount++;
     inp.className='answer-input partial';
+    haptic('partial');
     fb.className='feedback-main partial';
     const closest=accepted.reduce((best,a)=>similarity(userAns,a)>similarity(userAns,best)?a:best,accepted[0]);
     const info=synMap[closest]||{};
@@ -938,7 +963,8 @@ function handleAnswer(){
   } else {
     wrongAnswers.push({eng:w.anglais,fra:w.francais,idn:w.indonesien,accepted,userAns,synMap});
     addToReview(w.id);
-    inp.className='answer-input wrong';
+    inp.className='answer-input wrong shake';
+    haptic('wrong');
     fb.className='feedback-main wrong';
     const answersHtml=accepted.map(a=>{
       const info=synMap[a]||{};
@@ -998,6 +1024,7 @@ function showResults(){
   const circle=document.getElementById('score-circle');
   circle.className=`score-circle ${lvl}`;
   circle.innerHTML=`${pct}%<span class="lbl">${sc} / ${total}</span>`;
+  if(pct>=80)setTimeout(()=>burstConfetti(circle,pct===100?36:20),200);
   document.getElementById('result-title').textContent=titles[lvl];
   document.getElementById('result-sub').textContent=subs[lvl];
   const wl=document.getElementById('wrong-list');
@@ -1172,9 +1199,17 @@ function questChunks(theme){
 function getQuestProgress(){try{return JSON.parse(localStorage.getItem(QUEST_KEY))||{};}catch(e){return{};}}
 function saveQuestProgress(p){localStorage.setItem(QUEST_KEY,JSON.stringify(p));}
 
+let _questToggle={};
+function toggleQuestTheme(head,theme){
+  const el=head.parentElement;
+  el.classList.toggle('collapsed');
+  _questToggle[theme]=!el.classList.contains('collapsed');
+}
 function renderQuestMap(){
   const themes=questThemes();
   const p=getQuestProgress();
+  let lastTi=-1;
+  try{const lq=JSON.parse(localStorage.getItem(LASTQ_KEY));if(lq)lastTi=lq.ti;}catch(e){}
   let totalDone=0,totalLevels=0;
   const html=themes.map((theme,ti)=>{
     const chunks=questChunks(theme);
@@ -1186,17 +1221,22 @@ function renderQuestMap(){
       const unlocked=li===0||!!((p[theme+'|'+(li-1)]||{}).done);
       const cls=done?'done':unlocked?'open':'locked';
       const inner=done?'⭐':unlocked?(li+1):'🔒';
-      const click=(done||unlocked)?` onclick="startQuestLevel(${ti},${li})"`:'';
+      const click=(done||unlocked)?` onclick="event.stopPropagation();startQuestLevel(${ti},${li})"`:'';
       return `<div class="quest-node ${cls}"${click}>${inner}<span class="qn-sub">${chunk.length} mots</span></div>`;
     }).join('');
     totalDone+=doneCount;totalLevels+=chunks.length;
     const pctT=Math.round((doneCount/chunks.length)*100);
     const progCls=doneCount===chunks.length?'quest-theme-prog full':'quest-theme-prog';
-    return `<div class="quest-theme">
-      <div class="quest-theme-head">
+    // Ouvert par défaut : thème entamé non terminé, ou dernière quête jouée. Le toggle manuel prime.
+    const inProgress=doneCount>0&&doneCount<chunks.length;
+    const defaultOpen=inProgress||ti===lastTi;
+    const open=_questToggle[theme]!==undefined?_questToggle[theme]:defaultOpen;
+    return `<div class="quest-theme${open?'':' collapsed'}">
+      <div class="quest-theme-head" onclick="toggleQuestTheme(this,'${theme.replace(/'/g,"\\'")}')">
         <span class="quest-theme-emoji">${THEME_EMOJIS[theme]||'📌'}</span>
         <span class="quest-theme-name">${theme}</span>
         <span class="${progCls}">${doneCount===chunks.length?'🏆 ':''}${doneCount}/${chunks.length}</span>
+        <span class="quest-toggle">▾</span>
       </div>
       <div class="quest-bar"><div class="quest-bar-fill" style="width:${pctT}%"></div></div>
       <div class="quest-levels">${nodes}</div>
@@ -1303,6 +1343,37 @@ function trainFromLesson(type){
   const keys=Object.keys(GRAM_TYPES);
   document.querySelectorAll('.gram-type-btn').forEach((b,i)=>b.classList.toggle('selected',keys[i]===type));
   startGramQuiz();
+}
+
+// ── EFFETS : HAPTIQUE + CONFETTIS ──
+function haptic(kind){
+  if(!navigator.vibrate)return;
+  try{
+    if(kind==='correct')navigator.vibrate(25);
+    else if(kind==='partial')navigator.vibrate([15,30,15]);
+    else navigator.vibrate([45,40,45]);
+  }catch(e){}
+}
+function burstConfetti(el,n){
+  if(!el)return;
+  const rect=el.getBoundingClientRect();
+  const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+  const colors=['#6c63ff','#22c55e','#f59e0b','#38bdf8','#ef4444','#8b83ff'];
+  for(let i=0;i<n;i++){
+    const p=document.createElement('div');
+    p.className='confetti-p';
+    p.style.background=colors[i%colors.length];
+    p.style.left=cx+'px';p.style.top=cy+'px';
+    const ang=Math.random()*2*Math.PI,dist=60+Math.random()*90;
+    const dx=Math.cos(ang)*dist,dy=Math.sin(ang)*dist-40;
+    p.style.transition='transform .8s cubic-bezier(.15,.85,.35,1),opacity .8s ease-in';
+    document.body.appendChild(p);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      p.style.transform='translate('+dx+'px,'+dy+'px) rotate('+Math.floor(Math.random()*360)+'deg)';
+      p.style.opacity='0';
+    }));
+    setTimeout(()=>p.remove(),900);
+  }
 }
 
 // ── RÉVISION INTELLIGENTE ──
