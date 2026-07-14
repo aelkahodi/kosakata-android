@@ -358,6 +358,11 @@
     .tts-mini{background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:1rem;padding:6px 10px;align-self:center;flex-shrink:0;margin-left:8px;}
     .tts-mini:hover{border-color:var(--accent2);}
 
+    
+    /* ── PASTILLE LANGUE ── */
+    .lang-chip{position:fixed;right:14px;bottom:80px;z-index:40;width:42px;height:42px;border-radius:50%;border:1px solid var(--border);background:var(--surface);font-size:1.2rem;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.4);transition:transform .12s;}
+    .lang-chip:active{transform:scale(.9);}
+
     html,body{height:100%;overflow:hidden;}
     body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
     nav{display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -394,6 +399,7 @@
   <button id="tab-dict" onclick="showTab('dictionnaire')"><span class="nav-ic">📖</span><span class="nav-lb">Dico</span></button>
   <button id="tab-dash" onclick="showTab('dashboard')"><span class="nav-ic">📊</span><span class="nav-lb">Stats</span></button>
 </nav>
+<button id="lang-chip" class="lang-chip" onclick="toggleLang()" title="Changer de langue source">&#127468;&#127463;</button>
 <div id="quiz" class="page active">
   <div id="setup-panel">
     <div class="today-strip" id="today-strip"></div>
@@ -492,7 +498,7 @@
 </div>
 <div id="dashboard" class="page">
   <h1>Tableau de bord</h1>
-  <p class="sub">Historique de vos sessions de quiz</p>
+  <p class="sub" id="dash-sub">Historique de vos sessions de quiz</p>
   <div id="dash-empty" class="empty-state" style="display:none">
     <div class="icon">&#128200;</div>
     <p>Aucune session enregistrée.<br>Faites votre premier quiz !</p>
@@ -916,8 +922,10 @@ function showQuestion(){
   document.getElementById('q-class').textContent=w.classe_grammaticale;
   document.getElementById('q-emoji').textContent=w.emoji||'';
   document.getElementById('q-english').textContent=srcLang==='en'?w.anglais:w.francais;
-  document.getElementById('q-french').textContent=srcLang==='en'?w.francais:w.anglais;
-  document.getElementById('q-example').textContent=w.example_en||'';
+  document.getElementById('q-french').style.display='none';
+  const exRow=document.querySelector('.q-example');
+  if(srcLang==='en'&&w.example_en){exRow.style.display='flex';document.getElementById('q-example').textContent=w.example_en;}
+  else{exRow.style.display='none';}
   const inp=document.getElementById('answer-input');
   inp.value='';inp.className='answer-input';inp.disabled=false;
   setTimeout(()=>inp.focus(),80);
@@ -1055,7 +1063,7 @@ function showResults(){
   wl.innerHTML=wrongAnswers.length
     ?`<h3>Mots à revoir (${wrongAnswers.length})</h3>`+wrongAnswers.map(w=>
         `<div class="wrong-item">
-          <div><div class="eng">${srcLang==='en'?w.eng:w.fra}</div><div class="fra">${srcLang==='en'?w.fra:w.eng}</div></div>
+          <div><div class="eng">${srcLang==='en'?w.eng:w.fra}</div></div>
           <div><div class="idn">${w.accepted.join(' · ')}</div><div class="user-ans">${w.userAns||'(vide)'}</div></div>
         </div>`).join(''):'';
   saveSession(finalScore,pct,reviewActive?'Révision':selectedTheme,total);
@@ -1064,7 +1072,7 @@ function showResults(){
   if(questActive){
     const perfect=finalScore===total;
     const qp=getQuestProgress();
-    const qkey=questActive.theme+'|'+questActive.level;
+    const qkey=qk(questActive.theme,questActive.level);
     const prev=qp[qkey]||{best:0,done:false};
     prev.best=Math.max(prev.best,pct);
     if(perfect)prev.done=true;
@@ -1099,9 +1107,8 @@ let _dictExpanded=new Set();
 function renderDict(){
   const query=normalize(document.getElementById('dict-search').value||'');
   const filtered=query?VOCABULARY.filter(w=>
-    normalize(w.anglais).includes(query)||
+    normalize(srcLang==='en'?w.anglais:w.francais).includes(query)||
     normalize(w.indonesien).includes(query)||
-    normalize(w.francais).includes(query)||
     normalize(w.theme).includes(query)
   ):VOCABULARY;
 
@@ -1130,7 +1137,6 @@ function renderDict(){
           <div class="dict-card-emoji">${w.emoji||''}</div>
           <div class="dict-card-main">
             <div class="dict-card-en">${srcLang==='en'?w.anglais:w.francais}</div>
-            <div class="dict-card-fr">${srcLang==='en'?w.francais:w.anglais}</div>
           </div>
           <div class="dict-card-right">
             <div class="dict-card-idn">${w.indonesien} <button class="tts-btn" onclick="event.stopPropagation();speakWord(${w.id})" title="&Eacute;couter">&#128266;</button></div>
@@ -1138,7 +1144,7 @@ function renderDict(){
           </div>
         </div>
         <div class="dict-card-detail">
-          <div class="dict-example"><strong>🇬🇧</strong> ${w.example_en||''}</div>
+          ${srcLang==='en'&&w.example_en?'<div class="dict-example"><strong>🇬🇧</strong> '+w.example_en+'</div>':''}
           <div class="dict-example"><strong>🇮🇩</strong> ${w.example_id||''}${w.example_id?' <button class="tts-btn" onclick="event.stopPropagation();speakExample('+w.id+')" title="&Eacute;couter">&#128266;</button>':''}</div>
           ${synHtml}
         </div>
@@ -1168,14 +1174,16 @@ function toggleSection(header){
 // ── STORAGE ──
 function saveSession(score,pct,theme,total){
   const h=getHistory();
-  h.unshift({date:new Date().toISOString(),score,total,pct,theme:theme||null});
+  h.unshift({date:new Date().toISOString(),score,total,pct,theme:theme||null,lang:srcLang});
   localStorage.setItem(STORAGE_KEY,JSON.stringify(h.slice(0,100)));
 }
 function getHistory(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||[];}catch{return[];}}
 
 // ── DASHBOARD ──
 function renderDashboard(){
-  const h=getHistory();
+  const ds=document.getElementById('dash-sub');
+  if(ds)ds.textContent=srcLang==='en'?'Sessions anglais → indonésien 🇬🇧':'Sessions français → indonésien 🇫🇷';
+  const h=getHistory().filter(x=>(x.lang||'en')===srcLang);
   if(!h.length){document.getElementById('dash-empty').style.display='block';document.getElementById('dash-content').style.display='none';return;}
   document.getElementById('dash-empty').style.display='none';
   document.getElementById('dash-content').style.display='block';
@@ -1233,16 +1241,16 @@ function renderQuestMap(){
   const themes=questThemes();
   const p=getQuestProgress();
   let lastTi=-1;
-  try{const lq=JSON.parse(localStorage.getItem(LASTQ_KEY));if(lq)lastTi=lq.ti;}catch(e){}
+  const lq=getLastQ()[srcLang];if(lq)lastTi=lq.ti;
   let totalDone=0,totalLevels=0;
   const html=themes.map((theme,ti)=>{
     const chunks=questChunks(theme);
     let doneCount=0;
     const nodes=chunks.map((chunk,li)=>{
-      const st=p[theme+'|'+li]||{};
+      const st=p[qk(theme,li)]||{};
       const done=!!st.done;
       if(done)doneCount++;
-      const unlocked=li===0||!!((p[theme+'|'+(li-1)]||{}).done);
+      const unlocked=li===0||!!((p[qk(theme,li-1)]||{}).done);
       const cls=done?'done':unlocked?'open':'locked';
       const inner=done?'⭐':unlocked?(li+1):'🔒';
       const click=(done||unlocked)?` onclick="event.stopPropagation();startQuestLevel(${ti},${li})"`:'';
@@ -1276,7 +1284,7 @@ function startQuestLevel(ti,li){
   if(!chunks[li])return;
   reviewActive=false;
   questActive={theme,level:li};
-  localStorage.setItem(LASTQ_KEY,JSON.stringify({ti}));
+  const _lq=getLastQ();_lq[srcLang]={ti};localStorage.setItem(LASTQ_KEY,JSON.stringify(_lq));
   selectedTheme=theme;
   quizWords=[...chunks[li]].sort(()=>Math.random()-0.5);
   currentIndex=0;correctCount=0;partialCount=0;wrongAnswers=[];
@@ -1379,8 +1387,25 @@ function setLang(l){
   const be=document.getElementById('lang-en'),bf=document.getElementById('lang-fr');
   if(be)be.classList.toggle('active',l==='en');
   if(bf)bf.classList.toggle('active',l==='fr');
+  const chip=document.getElementById('lang-chip');
+  if(chip)chip.textContent=l==='en'?'🇬🇧':'🇫🇷';
   const sub=document.getElementById('quiz-sub');
   if(sub)sub.textContent=l==='en'?"Traduisez de l'anglais vers l'indonésien":"Traduisez du français vers l'indonésien";
+  if(typeof renderToday==='function')renderToday();
+  const on=id=>{const e=document.getElementById(id);return e&&e.classList.contains('active');};
+  if(on('quest'))renderQuestMap();
+  if(on('dictionnaire'))renderDict();
+  if(on('dashboard'))renderDashboard();
+}
+function toggleLang(){setLang(srcLang==='en'?'fr':'en');}
+// Clé de progression quest par langue (l'existant sans préfixe = piste anglaise)
+function qk(theme,li){return (srcLang==='fr'?'fr|':'')+theme+'|'+li;}
+function getLastQ(){
+  try{
+    const o=JSON.parse(localStorage.getItem(LASTQ_KEY))||{};
+    if(typeof o.ti==='number')return{en:o};
+    return o;
+  }catch(e){return{};}
 }
 
 // ── VOIX : SYNTHÈSE + RECONNAISSANCE ──
@@ -1527,16 +1552,15 @@ function nextQuestTarget(){
   const p=getQuestProgress();
   const themes=questThemes();
   // 1) Dernière quête jouée : niveau ouvert suivant dans ce thème
-  let last=null;
-  try{last=JSON.parse(localStorage.getItem(LASTQ_KEY));}catch(e){}
+  const last=getLastQ()[srcLang]||null;
   const cands=[];
   themes.forEach((theme,ti)=>{
     const chunks=questChunks(theme);
     let done=0;
     for(let li=0;li<chunks.length;li++){
-      if((p[theme+'|'+li]||{}).done){done++;continue;}
+      if((p[qk(theme,li)]||{}).done){done++;continue;}
       // premier niveau non terminé ; ouvert si li===0 ou précédent done
-      if(li===0||(p[theme+'|'+(li-1)]||{}).done){
+      if(li===0||(p[qk(theme,li-1)]||{}).done){
         cands.push({ti,li,theme,done,total:chunks.length,size:chunks[li].length});
       }
       break;
