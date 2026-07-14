@@ -1181,9 +1181,7 @@ function getHistory(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||
 
 // ── DASHBOARD ──
 function renderDashboard(){
-  const ds=document.getElementById('dash-sub');
-  if(ds)ds.textContent=srcLang==='en'?'Sessions anglais → indonésien 🇬🇧':'Sessions français → indonésien 🇫🇷';
-  const h=getHistory().filter(x=>(x.lang||'en')===srcLang);
+  const h=getHistory();
   if(!h.length){document.getElementById('dash-empty').style.display='block';document.getElementById('dash-content').style.display='none';return;}
   document.getElementById('dash-empty').style.display='none';
   document.getElementById('dash-content').style.display='block';
@@ -1208,7 +1206,7 @@ function renderDashboard(){
     const em=x.theme?(THEME_EMOJIS[x.theme]||'📌'):'🗂️';
     const sc=typeof x.score==='number'&&x.score%1!==0?x.score.toFixed(1):x.score;
     return `<tr><td>${ds} <span style="color:var(--muted);font-size:.74rem">${ts}</span></td>
-      <td style="font-size:.81rem">${em} ${x.theme||'Tous'}</td>
+      <td style="font-size:.81rem">${x.lang==='fr'?'🇫🇷 ':x.lang==='en'?'🇬🇧 ':''}${em} ${x.theme||'Tous'}</td>
       <td>${sc}/${x.total}</td><td>${x.pct}%</td>
       <td><span class="pill ${lvl}">${lab}</span></td></tr>`;
   }).join('');
@@ -1241,7 +1239,7 @@ function renderQuestMap(){
   const themes=questThemes();
   const p=getQuestProgress();
   let lastTi=-1;
-  const lq=getLastQ()[srcLang];if(lq)lastTi=lq.ti;
+  const lq=getLastQ();if(lq)lastTi=lq.ti;
   let totalDone=0,totalLevels=0;
   const html=themes.map((theme,ti)=>{
     const chunks=questChunks(theme);
@@ -1284,7 +1282,7 @@ function startQuestLevel(ti,li){
   if(!chunks[li])return;
   reviewActive=false;
   questActive={theme,level:li};
-  const _lq=getLastQ();_lq[srcLang]={ti};localStorage.setItem(LASTQ_KEY,JSON.stringify(_lq));
+  localStorage.setItem(LASTQ_KEY,JSON.stringify({ti}));
   selectedTheme=theme;
   quizWords=[...chunks[li]].sort(()=>Math.random()-0.5);
   currentIndex=0;correctCount=0;partialCount=0;wrongAnswers=[];
@@ -1399,13 +1397,13 @@ function setLang(l){
 }
 function toggleLang(){setLang(srcLang==='en'?'fr':'en');}
 // Clé de progression quest par langue (l'existant sans préfixe = piste anglaise)
-function qk(theme,li){return (srcLang==='fr'?'fr|':'')+theme+'|'+li;}
+function qk(theme,li){return theme+'|'+li;}
 function getLastQ(){
   try{
     const o=JSON.parse(localStorage.getItem(LASTQ_KEY))||{};
-    if(typeof o.ti==='number')return{en:o};
-    return o;
-  }catch(e){return{};}
+    if(typeof o.ti==='number')return o;
+    return o.en||o.fr||null;
+  }catch(e){return null;}
 }
 
 // ── VOIX : SYNTHÈSE + RECONNAISSANCE ──
@@ -1552,7 +1550,7 @@ function nextQuestTarget(){
   const p=getQuestProgress();
   const themes=questThemes();
   // 1) Dernière quête jouée : niveau ouvert suivant dans ce thème
-  const last=getLastQ()[srcLang]||null;
+  const last=getLastQ();
   const cands=[];
   themes.forEach((theme,ti)=>{
     const chunks=questChunks(theme);
