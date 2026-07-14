@@ -399,7 +399,7 @@
     <div class="today-strip" id="today-strip"></div>
     <div class="setup-header">
       <h1>Kosakata 🇮🇩</h1>
-      <p>Traduisez de l'anglais vers l'indonésien</p>
+      <p id="quiz-sub">Traduisez de l'anglais vers l'indonésien</p>
       <div class="vocab-count" id="vocab-info"></div>
     </div>
     <div class="section-lbl">Choisir une thématique</div>
@@ -410,6 +410,11 @@
       <button class="count-btn" onclick="selectCount(10,this)">10</button>
       <button class="count-btn" onclick="selectCount(15,this)">15</button>
       <button class="count-btn selected" onclick="selectCount(20,this)">20</button>
+    </div>
+    <div class="section-lbl" style="margin-top:18px">Langue source</div>
+    <div class="seg" style="margin-bottom:20px">
+      <button class="seg-btn active" id="lang-en" onclick="setLang('en')">&#127468;&#127463; Anglais</button>
+      <button class="seg-btn" id="lang-fr" onclick="setLang('fr')">&#127467;&#127479; Fran&ccedil;ais</button>
     </div>
     <div class="setup-footer">
       <div class="word-preview" id="word-preview"></div>
@@ -865,6 +870,7 @@ function initApp(){
     btn.classList.add('selected');
   });
   if(!voiceSupported()){const mb=document.getElementById('mic-btn');if(mb)mb.style.display='none';}
+  setLang(srcLang);
   updatePreview();
   // Dict subtitle
   const ds=document.getElementById('dict-sub');
@@ -909,8 +915,8 @@ function showQuestion(){
   document.getElementById('q-theme').textContent=w.theme;
   document.getElementById('q-class').textContent=w.classe_grammaticale;
   document.getElementById('q-emoji').textContent=w.emoji||'';
-  document.getElementById('q-english').textContent=w.anglais;
-  document.getElementById('q-french').textContent=w.francais;
+  document.getElementById('q-english').textContent=srcLang==='en'?w.anglais:w.francais;
+  document.getElementById('q-french').textContent=srcLang==='en'?w.francais:w.anglais;
   document.getElementById('q-example').textContent=w.example_en||'';
   const inp=document.getElementById('answer-input');
   inp.value='';inp.className='answer-input';inp.disabled=false;
@@ -1049,7 +1055,7 @@ function showResults(){
   wl.innerHTML=wrongAnswers.length
     ?`<h3>Mots à revoir (${wrongAnswers.length})</h3>`+wrongAnswers.map(w=>
         `<div class="wrong-item">
-          <div><div class="eng">${w.eng}</div><div class="fra">${w.fra}</div></div>
+          <div><div class="eng">${srcLang==='en'?w.eng:w.fra}</div><div class="fra">${srcLang==='en'?w.fra:w.eng}</div></div>
           <div><div class="idn">${w.accepted.join(' · ')}</div><div class="user-ans">${w.userAns||'(vide)'}</div></div>
         </div>`).join(''):'';
   saveSession(finalScore,pct,reviewActive?'Révision':selectedTheme,total);
@@ -1123,8 +1129,8 @@ function renderDict(){
         <div class="dict-card-top">
           <div class="dict-card-emoji">${w.emoji||''}</div>
           <div class="dict-card-main">
-            <div class="dict-card-en">${w.anglais}</div>
-            <div class="dict-card-fr">${w.francais}</div>
+            <div class="dict-card-en">${srcLang==='en'?w.anglais:w.francais}</div>
+            <div class="dict-card-fr">${srcLang==='en'?w.francais:w.anglais}</div>
           </div>
           <div class="dict-card-right">
             <div class="dict-card-idn">${w.indonesien} <button class="tts-btn" onclick="event.stopPropagation();speakWord(${w.id})" title="&Eacute;couter">&#128266;</button></div>
@@ -1363,6 +1369,20 @@ function trainFromLesson(type){
   startGramQuiz();
 }
 
+// ── LANGUE SOURCE ──
+const LANG_KEY='kosakata_lang_v1';
+let srcLang='en';
+try{srcLang=JSON.parse(localStorage.getItem(LANG_KEY))||'en';}catch(e){}
+function setLang(l){
+  srcLang=l;
+  localStorage.setItem(LANG_KEY,JSON.stringify(l));
+  const be=document.getElementById('lang-en'),bf=document.getElementById('lang-fr');
+  if(be)be.classList.toggle('active',l==='en');
+  if(bf)bf.classList.toggle('active',l==='fr');
+  const sub=document.getElementById('quiz-sub');
+  if(sub)sub.textContent=l==='en'?"Traduisez de l'anglais vers l'indonésien":"Traduisez du français vers l'indonésien";
+}
+
 // ── VOIX : SYNTHÈSE + RECONNAISSANCE ──
 function speak(text){
   if(!text)return;
@@ -1575,7 +1595,7 @@ function renderToday(){
 }
 
 // ── BACKUP ──
-const BACKUP_KEYS=[STORAGE_KEY,QUEST_KEY,LESSON_KEY,STREAK_KEY,LASTQ_KEY,REVIEW_KEY];
+const BACKUP_KEYS=[STORAGE_KEY,QUEST_KEY,LESSON_KEY,STREAK_KEY,LASTQ_KEY,REVIEW_KEY,LANG_KEY];
 function exportBackup(){
   const data={};
   BACKUP_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v)data[k]=v;});
