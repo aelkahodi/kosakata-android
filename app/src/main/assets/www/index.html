@@ -345,6 +345,19 @@
     .quest-theme.collapsed .quest-bar{margin-bottom:0;}
     .quest-theme.collapsed{padding-bottom:13px;}
 
+    
+    /* ── VOIX ── */
+    .answer-row{display:flex;gap:8px;align-items:stretch;margin-bottom:12px;}
+    .answer-row .answer-input{margin-bottom:0;flex:1;}
+    .mic-btn{width:52px;flex-shrink:0;border-radius:10px;border:2px solid var(--border);background:var(--surface2);color:var(--text);font-size:1.15rem;cursor:pointer;transition:all .15s;}
+    .mic-btn:hover{border-color:var(--accent2);}
+    .mic-btn.listening{border-color:var(--red);background:rgba(239,68,68,.12);animation:miclisten 1.1s infinite;}
+    @keyframes miclisten{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4);}50%{box-shadow:0 0 0 8px rgba(239,68,68,0);}}
+    .tts-btn{background:none;border:none;cursor:pointer;font-size:.92rem;padding:0 2px;vertical-align:middle;opacity:.75;transition:opacity .15s;}
+    .tts-btn:hover{opacity:1;}
+    .tts-mini{background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:1rem;padding:6px 10px;align-self:center;flex-shrink:0;margin-left:8px;}
+    .tts-mini:hover{border-color:var(--accent2);}
+
     html,body{height:100%;overflow:hidden;}
     body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
     nav{display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -423,10 +436,13 @@
         <span class="q-example-text" id="q-example"></span>
       </div>
     </div>
-    <input type="text" id="answer-input" class="answer-input"
-           placeholder="Réponse en indonésien…"
-           onkeydown="if(event.key==='Enter')handleAnswer()"
-           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+    <div class="answer-row">
+      <input type="text" id="answer-input" class="answer-input"
+             placeholder="Réponse en indonésien…"
+             onkeydown="if(event.key==='Enter')handleAnswer()"
+             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <button id="mic-btn" class="mic-btn" onclick="startVoice()" title="Répondre à la voix">&#127908;</button>
+    </div>
     <div class="feedback-main" id="feedback-main"></div>
     <div class="synonymes-bloc" id="synonymes-bloc">
       <div class="syn-title">Détail des variantes</div>
@@ -848,6 +864,7 @@ function initApp(){
     document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('selected'));
     btn.classList.add('selected');
   });
+  if(!voiceSupported()){const mb=document.getElementById('mic-btn');if(mb)mb.style.display='none';}
   updatePreview();
   // Dict subtitle
   const ds=document.getElementById('dict-sub');
@@ -980,6 +997,7 @@ function handleAnswer(){
       ${exId}</div>`;
   }
 
+  fb.insertAdjacentHTML('beforeend','<button class="tts-mini" onclick="speakWord('+w.id+')" title="&Eacute;couter la prononciation">&#128266;</button>');
   if(w.synonymes&&w.synonymes.length>0){
     document.getElementById('syn-list').innerHTML=accepted.map(mot=>{
       const info=synMap[mot]||{};
@@ -1109,13 +1127,13 @@ function renderDict(){
             <div class="dict-card-fr">${w.francais}</div>
           </div>
           <div class="dict-card-right">
-            <div class="dict-card-idn">${w.indonesien}</div>
+            <div class="dict-card-idn">${w.indonesien} <button class="tts-btn" onclick="event.stopPropagation();speakWord(${w.id})" title="&Eacute;couter">&#128266;</button></div>
             <div class="dict-card-class">${w.classe_grammaticale}</div>
           </div>
         </div>
         <div class="dict-card-detail">
           <div class="dict-example"><strong>🇬🇧</strong> ${w.example_en||''}</div>
-          <div class="dict-example"><strong>🇮🇩</strong> ${w.example_id||''}</div>
+          <div class="dict-example"><strong>🇮🇩</strong> ${w.example_id||''}${w.example_id?' <button class="tts-btn" onclick="event.stopPropagation();speakExample('+w.id+')" title="&Eacute;couter">&#128266;</button>':''}</div>
           ${synHtml}
         </div>
       </div>`;
@@ -1343,6 +1361,62 @@ function trainFromLesson(type){
   const keys=Object.keys(GRAM_TYPES);
   document.querySelectorAll('.gram-type-btn').forEach((b,i)=>b.classList.toggle('selected',keys[i]===type));
   startGramQuiz();
+}
+
+// ── VOIX : SYNTHÈSE + RECONNAISSANCE ──
+function speak(text){
+  if(!text)return;
+  if(window.AndroidSpeech&&AndroidSpeech.speak){try{AndroidSpeech.speak(text);return;}catch(e){}}
+  if(!('speechSynthesis' in window))return;
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='id-ID';
+    const v=speechSynthesis.getVoices().find(x=>(x.lang||'').toLowerCase().startsWith('id'));
+    if(v)u.voice=v;
+    u.rate=0.9;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function speakWord(id){const w=VOCABULARY.find(x=>x.id===id);if(w)speak(w.indonesien);}
+function speakExample(id){const w=VOCABULARY.find(x=>x.id===id);if(w&&w.example_id)speak(w.example_id);}
+
+let _recActive=false;
+function voiceSupported(){
+  return !!(window.AndroidSpeech&&AndroidSpeech.start)||!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+}
+function startVoice(){
+  if(_recActive||answered)return;
+  const btn=document.getElementById('mic-btn');
+  _recActive=true;if(btn)btn.classList.add('listening');
+  if(window.AndroidSpeech&&AndroidSpeech.start){
+    try{AndroidSpeech.start();}catch(e){onSpeechEnd();}
+    return;
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){onSpeechEnd();return;}
+  try{
+    const rec=new SR();
+    rec.lang='id-ID';rec.interimResults=false;rec.maxAlternatives=1;
+    rec.onresult=e=>{onSpeechResult(e.results[0][0].transcript);};
+    rec.onerror=()=>onSpeechEnd();
+    rec.onend=()=>onSpeechEnd();
+    rec.start();
+  }catch(e){onSpeechEnd();}
+}
+function onSpeechResult(text){
+  onSpeechEnd();
+  if(!text)return;
+  const inp=document.getElementById('answer-input');
+  if(inp&&!inp.disabled&&document.getElementById('quiz-active').style.display!=='none'){
+    inp.value=text.trim().toLowerCase();
+    inp.focus();
+  }
+}
+function onSpeechEnd(){
+  _recActive=false;
+  const b=document.getElementById('mic-btn');
+  if(b)b.classList.remove('listening');
 }
 
 // ── EFFETS : HAPTIQUE + CONFETTIS ──
