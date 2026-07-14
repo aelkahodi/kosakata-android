@@ -635,10 +635,11 @@ function runGramAssertions(){
 function initGrammar(){
   const types=Object.keys(GRAM_TYPES);
   document.getElementById('gram-info').innerHTML=
-    `<span>${GRAMMAR_DATA.length}</span> exercices · <span>${types.length}</span> types`;
+    i18f('gram_info',{n:GRAMMAR_DATA.length,t:types.length});
   const grid=document.getElementById('gram-type-grid');
   grid.innerHTML=types.map(t=>{
-    const {label,emoji,desc}=GRAM_TYPES[t];
+    const {emoji}=GRAM_TYPES[t];
+    const label=i18Gram(t,'label'),desc=i18Gram(t,'desc');
     const count=GRAMMAR_DATA.filter(e=>e.type===t).length;
     return`<button class="gram-type-btn" onclick="selectGramType('${t}',this)">
       <span class="gram-type-emoji">${emoji}</span>
@@ -672,14 +673,14 @@ function startGramQuiz(){
 function showGramQuestion(){
   gramAnswered=false;
   const ex=gramExercices[gramIndex];
-  document.getElementById('gram-counter').textContent=`Question ${gramIndex+1} / ${gramExercices.length}`;
+  document.getElementById('gram-counter').textContent=`${i18('question')} ${gramIndex+1} / ${gramExercices.length}`;
   updateGramScoreLive();
   document.getElementById('gram-progress-bar').style.width=`${(gramIndex/gramExercices.length)*100}%`;
   const diffStars='⭐'.repeat(ex.difficulte)+'☆'.repeat(3-ex.difficulte);
   const typeInfo=GRAM_TYPES[ex.type]||{};
   document.getElementById('gram-card').innerHTML=`
     <div class="card-badges">
-      <span class="theme-badge">${typeInfo.label||ex.type}</span>
+      <span class="theme-badge">${i18Gram(ex.type,'label')}</span>
       <span class="gram-affixe-badge">${ex.affixe||''}</span>
       <span class="gram-diff">${diffStars}</span>
     </div>
@@ -759,12 +760,12 @@ function submitGram(){
   const fb=document.getElementById('gram-feedback');
   const icon=result==='correct'?'✅':result==='tolere'?'🟡':'✗';
   const cls=result==='correct'?'correct':result==='tolere'?'partial':'wrong';
-  const title=result==='correct'?'Correct !':result==='tolere'?'Réponse tolérée !':'Réponse incorrecte';
+  const title=result==='correct'?i18('fb_correct'):result==='tolere'?i18('gram_tol'):i18('fb_wrong');
   let body=`<div class="fb-title">${title}</div>`;
   if(result!=='correct'){
-    body+=`<div class="fb-note">Réponse exacte : <strong>${ex.reponses_acceptees.join(' / ')}</strong></div>`;
+    body+=`<div class="fb-note">${i18('fb_exact')} <strong>${ex.reponses_acceptees.join(' / ')}</strong></div>`;
     if(ex.reponses_tolerees&&ex.reponses_tolerees.length)
-      body+=`<div class="fb-note" style="margin-top:3px">Aussi toléré : ${ex.reponses_tolerees.join(', ')}</div>`;
+      body+=`<div class="fb-note" style="margin-top:3px">${i18('gram_also_tol')} ${ex.reponses_tolerees.join(', ')}</div>`;
   }
   body+=`<div class="fb-note" style="margin-top:6px;color:var(--muted);font-style:italic">💡 ${ex.explication}</div>`;
   fb.className=`feedback-main ${cls}`;
@@ -772,7 +773,7 @@ function submitGram(){
   document.getElementById('gram-submit-btn').style.display='none';
   const isLast=gramIndex===gramExercices.length-1;
   const nb=document.getElementById('gram-next-btn');
-  nb.textContent=isLast?'Voir les résultats →':'Suivant →';
+  nb.textContent=isLast?i18('btn_results'):i18('btn_next');
   nb.style.display='inline-flex';
   updateGramScoreLive();
 }
@@ -797,7 +798,7 @@ function showGramResults(){
   const finalScore=gramCorrect+gramTolere*0.5;
   const pct=Math.round((finalScore/total)*100);
   const lvl=pct>=80?'great':pct>=50?'ok':'poor';
-  const titles={great:'🎉 Excellent !',ok:'👍 Pas mal !',poor:'💪 Continue !'};
+  const titles={great:i18('res_g_great'),ok:i18('res_g_ok'),poor:i18('res_g_poor')};
   const sc=finalScore%1===0?finalScore:finalScore.toFixed(1);
   const circle=document.getElementById('gram-score-circle');
   circle.className=`score-circle ${lvl}`;
@@ -805,10 +806,10 @@ function showGramResults(){
   if(pct>=80)setTimeout(()=>burstConfetti(circle,pct===100?36:20),200);
   document.getElementById('gram-result-title').textContent=titles[lvl];
   document.getElementById('gram-result-sub').textContent=
-    `${sc} / ${total}${gramTolere>0?` (dont ${gramTolere} toléré${gramTolere>1?'s':''})`:''}`; 
+    `${sc} / ${total}${gramTolere>0?i18f('gram_tolcount',{n:gramTolere,s:plural(gramTolere)}):''}`; 
   const wl=document.getElementById('gram-wrong-list');
   wl.innerHTML=gramWrong.length
-    ?`<h3>Exercices à revoir (${gramWrong.length})</h3>`+gramWrong.map(({ex,saisie})=>
+    ?`<h3>${i18('gram_review')} (${gramWrong.length})</h3>`+gramWrong.map(({ex,saisie})=>
         `<div class="wrong-item">
           <div><div class="eng">${ex.consigne}</div><div class="fra">${ex.mot_base} → ${ex.traduction_base}</div></div>
           <div><div class="idn">${ex.reponses_acceptees[0]}</div><div class="user-ans">${saisie||'(vide)'}</div></div>
@@ -856,17 +857,17 @@ function initApp(){
   _themeList=themes.map(([t])=>t);
   const withSyn=VOCABULARY.filter(v=>v.synonymes&&v.synonymes.length).length;
   document.getElementById('vocab-info').innerHTML=
-    `<span>${VOCABULARY.length}</span> mots · <span>${withSyn}</span> avec synonymes`;
+    `<span>${VOCABULARY.length}</span> ${i18('words')} · <span>${withSyn}</span> ${i18('with_syn')}`;
   const grid=document.getElementById('theme-grid');
   grid.innerHTML=
     `<button class="theme-btn selected" onclick="selectTheme(-1)" style="grid-column:span 2">
-      <span class="t-emoji">🗂️</span><span class="t-name">Tous les thèmes</span>
+      <span class="t-emoji">🗂️</span><span class="t-name">${i18('all_themes')}</span>
       <span class="t-count">${VOCABULARY.length}</span>
     </button>`+
     themes.map(([t,c],i)=>
       `<button class="theme-btn" onclick="selectTheme(${i})">
         <span class="t-emoji">${THEME_EMOJIS[t]||'📌'}</span>
-        <span class="t-name">${t}</span>
+        <span class="t-name">${i18Theme(t)}</span>
         <span class="t-count">${c}</span>
       </button>`).join('');
   grid.addEventListener('click',e=>{
@@ -896,8 +897,8 @@ function updatePreview(){
   const q=Math.min(available,selectedCount);
   const el=document.getElementById('word-preview');
   el.innerHTML=available<=selectedCount
-    ?`<span class="warn">${available} mots disponibles</span> — quiz sur les ${q} mots du thème`
-    :`<span>${available}</span> mots disponibles · <span>${q}</span> tirés au sort`;
+    ?i18f('prev_warn',{n:available,q:q})
+    :i18f('prev_ok',{n:available,q:q});
 }
 
 // ── QUIZ ──
@@ -915,11 +916,11 @@ function startQuiz(){
 function showQuestion(){
   answered=false;
   const w=quizWords[currentIndex];
-  document.getElementById('q-counter').textContent=`Question ${currentIndex+1} / ${quizWords.length}`;
+  document.getElementById('q-counter').textContent=`${i18('question')} ${currentIndex+1} / ${quizWords.length}`;
   updateScoreLive();
   document.getElementById('progress-bar').style.width=`${(currentIndex/quizWords.length)*100}%`;
-  document.getElementById('q-theme').textContent=w.theme;
-  document.getElementById('q-class').textContent=w.classe_grammaticale;
+  document.getElementById('q-theme').textContent=i18Theme(w.theme);
+  document.getElementById('q-class').textContent=i18Class(w.classe_grammaticale);
   document.getElementById('q-emoji').textContent=w.emoji||'';
   document.getElementById('q-english').textContent=srcLang==='en'?w.anglais:w.francais;
   document.getElementById('q-french').style.display='none';
@@ -975,9 +976,9 @@ function handleAnswer(){
         const info=synMap[a]||{};
         return `<span class="fb-alt"><strong>${a}</strong>${info.registre?` <em>(${info.registre})</em>`:''}</span>`;
       }).join(' · ');
-      fb.innerHTML=`<span class="fb-icon">✅</span><div class="fb-body"><div class="fb-title">Correct !</div><div class="fb-note">Aussi valide : ${othersHtml}</div>${exId}</div>`;
+      fb.innerHTML=`<span class="fb-icon">✅</span><div class="fb-body"><div class="fb-title">${i18('fb_correct')}</div><div class="fb-note">${i18('fb_also')} ${othersHtml}</div>${exId}</div>`;
     } else {
-      fb.innerHTML=`<span class="fb-icon">✅</span><div class="fb-body"><div class="fb-title">Correct !</div>${exId}</div>`;
+      fb.innerHTML=`<span class="fb-icon">✅</span><div class="fb-body"><div class="fb-title">${i18('fb_correct')}</div>${exId}</div>`;
     }
   } else if(partial){
     partialCount++;
@@ -988,8 +989,8 @@ function handleAnswer(){
     const info=synMap[closest]||{};
     const pct=Math.round(bestSim*100);
     fb.innerHTML=`<span class="fb-icon">🟡</span><div class="fb-body">
-      <div class="fb-title">Presque ! <span class="fb-half">+0.5 pt (${pct}% similaire)</span></div>
-      <div class="fb-note">Réponse exacte : <strong>${closest}</strong>${info.note?` — <em>${info.note}</em>`:''}</div>
+      <div class="fb-title">${i18('fb_almost')} <span class="fb-half">${i18f('fb_half',{pct:pct})}</span></div>
+      <div class="fb-note">${i18('fb_exact')} <strong>${closest}</strong>${info.note?` — <em>${info.note}</em>`:''}</div>
       ${exId}</div>`;
   } else {
     wrongAnswers.push({eng:w.anglais,fra:w.francais,idn:w.indonesien,accepted,userAns,synMap});
@@ -1004,9 +1005,9 @@ function handleAnswer(){
       if(info.note)parts.push(`<em class="fb-note-inline">${info.note}</em>`);
       return `<div class="fb-answer-item"><strong>${a}</strong>${parts.length?' — '+parts.join(' · '):''}</div>`;
     }).join('');
-    const label=accepted.length>1?'Réponses valides :':'La bonne réponse :';
+    const label=accepted.length>1?i18('fb_valid_pl'):i18('fb_valid_one');
     fb.innerHTML=`<span class="fb-icon">✗</span><div class="fb-body">
-      <div class="fb-title">Réponse incorrecte</div>
+      <div class="fb-title">${i18('fb_wrong')}</div>
       <div class="fb-answers-block"><div class="fb-label">${label}</div>${answersHtml}</div>
       ${exId}</div>`;
   }
@@ -1032,7 +1033,7 @@ function handleAnswer(){
   document.getElementById('submit-btn').style.display='none';
   const isLast=currentIndex===quizWords.length-1;
   const nb=document.getElementById('next-btn');
-  nb.textContent=isLast?'Voir les résultats →':'Suivant →';
+  nb.textContent=isLast?i18('btn_results'):i18('btn_next');
   nb.style.display='inline-flex';
   updateScoreLive();
 }
@@ -1047,12 +1048,12 @@ function showResults(){
   const finalScore=correctCount+partialCount*0.5;
   const pct=Math.round((finalScore/total)*100);
   const lvl=pct>=80?'great':pct>=50?'ok':'poor';
-  const titles={great:'🎉 Excellent travail !',ok:'👍 Pas mal !',poor:'💪 Continue à pratiquer !'};
-  const tl=selectedTheme?`· ${THEME_EMOJIS[selectedTheme]||''} ${selectedTheme}`:'';
+  const titles={great:i18('res_great'),ok:i18('res_ok'),poor:i18('res_poor')};
+  const tl=selectedTheme?`· ${THEME_EMOJIS[selectedTheme]||''} ${i18Theme(selectedTheme)}`:'';
   const sc=finalScore%1===0?finalScore:finalScore.toFixed(1);
   let sub=`${sc} / ${total} ${tl}`;
-  if(partialCount>0)sub+=` (dont ${partialCount} approximative${partialCount>1?'s':''})`;
-  const subs={great:sub+' — excellent !',ok:sub+' — continuez !',poor:sub+' — révisez ci-dessous.'};
+  if(partialCount>0)sub+=i18f('res_approx',{n:partialCount,s:plural(partialCount)});
+  const subs={great:sub+i18('sfx_great'),ok:sub+i18('sfx_ok'),poor:sub+i18('sfx_poor')};
   const circle=document.getElementById('score-circle');
   circle.className=`score-circle ${lvl}`;
   circle.innerHTML=`${pct}%<span class="lbl">${sc} / ${total}</span>`;
@@ -1061,7 +1062,7 @@ function showResults(){
   document.getElementById('result-sub').textContent=subs[lvl];
   const wl=document.getElementById('wrong-list');
   wl.innerHTML=wrongAnswers.length
-    ?`<h3>Mots à revoir (${wrongAnswers.length})</h3>`+wrongAnswers.map(w=>
+    ?`<h3>${i18('wrong_header')} (${wrongAnswers.length})</h3>`+wrongAnswers.map(w=>
         `<div class="wrong-item">
           <div><div class="eng">${srcLang==='en'?w.eng:w.fra}</div></div>
           <div><div class="idn">${w.accepted.join(' · ')}</div><div class="user-ans">${w.userAns||'(vide)'}</div></div>
@@ -1080,23 +1081,23 @@ function showResults(){
     const nLevels=questChunks(questActive.theme).length;
     const isLast=questActive.level>=nLevels-1;
     const ti=questThemes().indexOf(questActive.theme);
-    document.getElementById('result-sub').textContent+=perfect?(isLast?' — 🏆 Thème terminé !':' — 🔓 Niveau suivant débloqué !'):' — 🔒 100% requis pour débloquer la suite';
+    document.getElementById('result-sub').textContent+=perfect?(isLast?i18('q_done'):i18('q_unlocked')):i18('q_locked');
     let btns='';
-    if(perfect&&!isLast)btns+='<button class="btn btn-primary" onclick="startQuestLevel('+ti+','+(questActive.level+1)+')">Niveau suivant →</button>';
-    btns+='<button class="btn '+(perfect?'btn-secondary':'btn-primary')+'" onclick="startQuestLevel('+ti+','+questActive.level+')">↻ Rejouer le niveau</button>';
-    btns+='<button class="btn btn-secondary" onclick="showTab(\'quest\')">🗺️ Carte des quêtes</button>';
+    if(perfect&&!isLast)btns+='<button class="btn btn-primary" onclick="startQuestLevel('+ti+','+(questActive.level+1)+')">'+i18('q_next_level')+'</button>';
+    btns+='<button class="btn '+(perfect?'btn-secondary':'btn-primary')+'" onclick="startQuestLevel('+ti+','+questActive.level+')">'+i18('q_replay')+'</button>';
+    btns+='<button class="btn btn-secondary" onclick="showTab(\'quest\')">'+i18('q_map')+'</button>';
     ra.innerHTML=btns;
   } else if(reviewActive){
     const nrev=reviewCount();
     ra.innerHTML=(nrev
-      ?'<button class="btn btn-primary" onclick="startReviewQuiz()">🔁 Réviser encore ('+nrev+')</button>'
-      :'<div style="width:100%;text-align:center;color:var(--green);font-size:.9rem;margin-bottom:6px">🎉 Plus aucun mot à réviser !</div>')+
-      '<button class="btn btn-secondary" onclick="backToSetup()">← Accueil</button>'+
-      '<button class="btn btn-secondary" onclick="showTab(\'dashboard\')">📊 Stats</button>';
+      ?'<button class="btn btn-primary" onclick="startReviewQuiz()">'+i18f('rev_again',{n:nrev})+'</button>'
+      :'<div style="width:100%;text-align:center;color:var(--green);font-size:.9rem;margin-bottom:6px">'+i18('rev_none')+'</div>')+
+      '<button class="btn btn-secondary" onclick="backToSetup()">'+i18('btn_home')+'</button>'+
+      '<button class="btn btn-secondary" onclick="showTab(\'dashboard\')">'+i18('btn_statsb')+'</button>';
   } else {
-    ra.innerHTML='<button class="btn btn-primary" onclick="startQuiz()">↻ Rejouer</button>'+
-      '<button class="btn btn-secondary" onclick="backToSetup()">← Thèmes</button>'+
-      '<button class="btn btn-secondary" onclick="showTab(\'dashboard\')">📊 Stats</button>';
+    ra.innerHTML='<button class="btn btn-primary" onclick="startQuiz()">'+i18('btn_replay')+'</button>'+
+      '<button class="btn btn-secondary" onclick="backToSetup()">'+i18('btn_topics')+'</button>'+
+      '<button class="btn btn-secondary" onclick="showTab(\'dashboard\')">'+i18('btn_statsb')+'</button>';
   }
 }
 
@@ -1114,7 +1115,7 @@ function renderDict(){
 
   const container=document.getElementById('dict-content');
   if(!filtered.length){
-    container.innerHTML='<div class="dict-no-results"><div class="icon">🔍</div><p>Aucun mot trouvé pour "<strong>'+query+'"</strong></p></div>';
+    container.innerHTML='<div class="dict-no-results"><div class="icon">🔍</div><p>'+i18('dict_none')+' "<strong>'+query+'"</strong></p></div>';
     return;
   }
 
@@ -1140,7 +1141,7 @@ function renderDict(){
           </div>
           <div class="dict-card-right">
             <div class="dict-card-idn">${w.indonesien} <button class="tts-btn" onclick="event.stopPropagation();speakWord(${w.id})" title="&Eacute;couter">&#128266;</button></div>
-            <div class="dict-card-class">${w.classe_grammaticale}</div>
+            <div class="dict-card-class">${i18Class(w.classe_grammaticale)}</div>
           </div>
         </div>
         <div class="dict-card-detail">
@@ -1154,7 +1155,7 @@ function renderDict(){
     return `<div class="dict-section" id="ds-${theme.replace(/[^a-z]/gi,'_')}">
       <div class="dict-section-header" onclick="toggleSection(this)">
         <span class="dict-section-emoji">${emoji}</span>
-        <span class="dict-section-title">${theme}</span>
+        <span class="dict-section-title">${i18Theme(theme)}</span>
         <span class="dict-section-count">${words.length}</span>
         <span class="dict-section-toggle">▾</span>
       </div>
@@ -1188,9 +1189,9 @@ function renderDashboard(){
   const avg=Math.round(h.reduce((s,x)=>s+x.pct,0)/h.length);
   const best=Math.max(...h.map(x=>x.pct));
   document.getElementById('stats-grid').innerHTML=`
-    <div class="stat-card"><div class="val">${h.length}</div><div class="lbl">Sessions</div></div>
-    <div class="stat-card"><div class="val">${avg}%</div><div class="lbl">Moyenne</div></div>
-    <div class="stat-card"><div class="val">${best}%</div><div class="lbl">Record</div></div>`;
+    <div class="stat-card"><div class="val">${h.length}</div><div class="lbl">${i18('lbl_sessions')}</div></div>
+    <div class="stat-card"><div class="val">${avg}%</div><div class="lbl">${i18('lbl_avg')}</div></div>
+    <div class="stat-card"><div class="val">${best}%</div><div class="lbl">${i18('lbl_best')}</div></div>`;
   const recent=[...h].slice(0,10).reverse();
   document.getElementById('bar-chart').innerHTML=recent.map(x=>{
     const col=x.pct>=80?'#22c55e':x.pct>=50?'#f59e0b':'#ef4444';
@@ -1199,14 +1200,14 @@ function renderDashboard(){
   }).join('');
   document.getElementById('history-body').innerHTML=h.map(x=>{
     const lvl=x.pct>=80?'great':x.pct>=50?'ok':'poor';
-    const lab={great:'Excellent',ok:'Bien',poor:'À revoir'}[lvl];
+    const lab={great:i18('pill_great'),ok:i18('pill_ok'),poor:i18('pill_poor')}[lvl];
     const d=new Date(x.date);
-    const ds=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+    const ds=d.toLocaleDateString(dateLocale(),{day:'2-digit',month:'short',year:'numeric'});
     const ts=d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
     const em=x.theme?(THEME_EMOJIS[x.theme]||'📌'):'🗂️';
     const sc=typeof x.score==='number'&&x.score%1!==0?x.score.toFixed(1):x.score;
     return `<tr><td>${ds} <span style="color:var(--muted);font-size:.74rem">${ts}</span></td>
-      <td style="font-size:.81rem">${x.lang==='fr'?'🇫🇷 ':x.lang==='en'?'🇬🇧 ':''}${em} ${x.theme||'Tous'}</td>
+      <td style="font-size:.81rem">${x.lang==='fr'?'🇫🇷 ':x.lang==='en'?'🇬🇧 ':''}${em} ${x.theme?i18Theme(x.theme):i18('all')}</td>
       <td>${sc}/${x.total}</td><td>${x.pct}%</td>
       <td><span class="pill ${lvl}">${lab}</span></td></tr>`;
   }).join('');
@@ -1252,7 +1253,7 @@ function renderQuestMap(){
       const cls=done?'done':unlocked?'open':'locked';
       const inner=done?'⭐':unlocked?(li+1):'🔒';
       const click=(done||unlocked)?` onclick="event.stopPropagation();startQuestLevel(${ti},${li})"`:'';
-      return `<div class="quest-node ${cls}"${click}>${inner}<span class="qn-sub">${chunk.length} mots</span></div>`;
+      return `<div class="quest-node ${cls}"${click}>${inner}<span class="qn-sub">${chunk.length} ${i18('words')}</span></div>`;
     }).join('');
     totalDone+=doneCount;totalLevels+=chunks.length;
     const pctT=Math.round((doneCount/chunks.length)*100);
@@ -1264,7 +1265,7 @@ function renderQuestMap(){
     return `<div class="quest-theme${open?'':' collapsed'}">
       <div class="quest-theme-head" onclick="toggleQuestTheme(this,'${theme.replace(/'/g,"\\'")}')">
         <span class="quest-theme-emoji">${THEME_EMOJIS[theme]||'📌'}</span>
-        <span class="quest-theme-name">${theme}</span>
+        <span class="quest-theme-name">${i18Theme(theme)}</span>
         <span class="${progCls}">${doneCount===chunks.length?'🏆 ':''}${doneCount}/${chunks.length}</span>
         <span class="quest-toggle">▾</span>
       </div>
@@ -1272,7 +1273,7 @@ function renderQuestMap(){
       <div class="quest-levels">${nodes}</div>
     </div>`;
   }).join('');
-  document.getElementById('quest-summary').innerHTML=`<span>${totalDone}</span> / ${totalLevels} niveaux terminés · ${QUEST_SIZE} mots par niveau`;
+  document.getElementById('quest-summary').innerHTML=i18f('quest_summary',{d:totalDone,t:totalLevels,sz:QUEST_SIZE});
   document.getElementById('quest-map').innerHTML=html;
 }
 
@@ -1313,7 +1314,7 @@ function setGramView(v){
 function renderLessonList(){
   const read=getLessonsRead();
   const done=LESSONS.filter(l=>read[l.id]).length;
-  document.getElementById('lecon-progress-txt').innerHTML=`<span>${done}</span> / ${LESSONS.length} le&ccedil;ons lues`;
+  document.getElementById('lecon-progress-txt').innerHTML=i18f('les_read',{d:done,t:LESSONS.length});
   document.getElementById('lecon-progress-fill').style.width=`${Math.round(done/LESSONS.length*100)}%`;
   document.getElementById('lecons-list').innerHTML=LESSONS.map((l,i)=>{
     const lu=!!read[l.id];
@@ -1347,19 +1348,19 @@ function openLesson(i){
   _leconOpen=i;
   const read=getLessonsRead();
   read[l.id]=true;saveLessonsRead(read);
-  const exoBtn=l.exo?`<button class="btn btn-primary" onclick="trainFromLesson('${l.exo}')">&#9999;&#65039; S'entra&icirc;ner sur ce point</button>`:'';
+  const exoBtn=l.exo?`<button class="btn btn-primary" onclick="trainFromLesson('${l.exo}')">${i18('les_train')}</button>`:'';
   document.getElementById('lecon-view').innerHTML=`
-    <button class="lc-back" onclick="renderLessonList()">&#8592; Toutes les le&ccedil;ons</button>
+    <button class="lc-back" onclick="renderLessonList()">${i18('les_all')}</button>
     <span class="lc-emoji">${l.emoji}</span>
     <div class="lc-titre">${l.titre}</div>
     <div class="lc-resume">${l.resume}</div>
     ${l.blocs.map(renderBloc).join('')}
     <div class="lc-actions">${exoBtn}
-      <button class="btn btn-secondary" onclick="renderLessonList()">&#10003; Termin&eacute;</button>
+      <button class="btn btn-secondary" onclick="renderLessonList()">${i18('les_done')}</button>
     </div>
     <div class="lc-navrow">
-      <button ${i===0?'disabled':''} onclick="openLesson(${i-1})">&#8592; Pr&eacute;c&eacute;dente</button>
-      <button ${i===LESSONS.length-1?'disabled':''} onclick="openLesson(${i+1})">Suivante &#8594;</button>
+      <button ${i===0?'disabled':''} onclick="openLesson(${i-1})">${i18('les_prev')}</button>
+      <button ${i===LESSONS.length-1?'disabled':''} onclick="openLesson(${i+1})">${i18('les_next')}</button>
     </div>`;
   document.getElementById('lecons-list').style.display='none';
   document.getElementById('lecon-view').style.display='block';
@@ -1388,7 +1389,9 @@ function setLang(l){
   const chip=document.getElementById('lang-chip');
   if(chip)chip.textContent=l==='en'?'🇬🇧':'🇫🇷';
   const sub=document.getElementById('quiz-sub');
-  if(sub)sub.textContent=l==='en'?"Traduisez de l'anglais vers l'indonésien":"Traduisez du français vers l'indonésien";
+  if(sub)sub.textContent=i18('quiz_sub');
+  applyLangUI();
+  updatePreview();
   if(typeof renderToday==='function')renderToday();
   const on=id=>{const e=document.getElementById(id);return e&&e.classList.contains('active');};
   if(on('quest'))renderQuestMap();
@@ -1396,6 +1399,195 @@ function setLang(l){
   if(on('dashboard'))renderDashboard();
 }
 function toggleLang(){setLang(srcLang==='en'?'fr':'en');}
+
+// ── I18N : INTERFACE BILINGUE ──
+const I18N={
+fr:{
+ nav_quiz:'Quiz',nav_quest:'Quest',nav_gram:'Grammaire',nav_dict:'Dico',nav_stats:'Stats',
+ quiz_sub:"Traduisez du français vers l'indonésien",
+ choose_theme:'Choisir une thématique',word_count:'Nombre de mots',src_lang:'Langue source',
+ start_quiz:'Démarrer le quiz',words:'mots',with_syn:'avec synonymes',all_themes:'Tous les thèmes',all:'Tous',
+ prev_warn:'<span class="warn">{n} mots disponibles</span> — quiz sur les {q} mots du thème',
+ prev_ok:'<span>{n}</span> mots disponibles · <span>{q}</span> tirés au sort',
+ question:'Question',ph_answer:'Réponse en indonésien…',btn_check:'Valider',btn_next:'Suivant →',btn_results:'Voir les résultats →',
+ fb_correct:'Correct !',fb_also:'Aussi valide :',fb_almost:'Presque !',fb_half:'+0.5 pt ({pct}% similaire)',
+ fb_exact:'Réponse exacte :',fb_wrong:'Réponse incorrecte',fb_valid_pl:'Réponses valides :',fb_valid_one:'La bonne réponse :',
+ syn_title:'Détail des variantes',
+ res_great:'🎉 Excellent travail !',res_ok:'👍 Pas mal !',res_poor:'💪 Continue à pratiquer !',
+ sfx_great:' — excellent !',sfx_ok:' — continuez !',sfx_poor:' — révisez ci-dessous.',
+ res_approx:' (dont {n} approximative{s})',
+ wrong_header:'Mots à revoir',
+ btn_replay:'↻ Rejouer',btn_topics:'← Thèmes',btn_statsb:'📊 Stats',btn_home:'← Accueil',
+ q_next_level:'Niveau suivant →',q_replay:'↻ Rejouer le niveau',q_map:'🗺️ Carte des quêtes',
+ q_done:' — 🏆 Thème terminé !',q_unlocked:' — 🔓 Niveau suivant débloqué !',q_locked:' — 🔒 100% requis pour débloquer la suite',
+ rev_again:'🔁 Réviser encore ({n})',rev_none:'🎉 Plus aucun mot à réviser !',
+ streak_days:"jour{s} d'affilée",streak_active:'Série en cours — reviens demain pour continuer !',
+ streak_yday:"Joue aujourd'hui pour prolonger ta série !",streak_none:'Lance une session pour démarrer ta série.',
+ streak_best:'Record',
+ today_continue:'Continue ta quête',today_start:'Commence une quête',today_level:'Niveau {x} / {y} · {n} mots',
+ today_review:'🔁 <strong>Réviser mes erreurs</strong> · <span class="review-count">{n} mot{s}</span> →',
+ today_lesson:'Leçon suivante :',
+ quest_sub:'Avancez thème par thème, niveau par niveau — 100\u00a0% requis pour débloquer le suivant',
+ quest_summary:'<span>{d}</span> / {t} niveaux terminés · {sz} mots par niveau',
+ dict_title:'Dictionnaire',dict_sub:'{n} mots classés par thématique',dict_ph:'Rechercher un mot…',dict_none:'Aucun mot trouvé pour',
+ dash_title:'Tableau de bord',dash_sub:'Historique de vos sessions de quiz',
+ dash_empty:'Aucune session enregistrée.<br>Faites votre premier quiz !',
+ chart_title:'Progression (10 dernières sessions)',
+ h_date:'Date',h_theme:'Thème',h_level:'Niveau',
+ lbl_sessions:'Sessions',lbl_avg:'Moyenne',lbl_best:'Record',
+ pill_great:'Excellent',pill_ok:'Bien',pill_poor:'À revoir',
+ lessons:'Leçons',exercises:'Exercices',gram_title:'Grammaire 🇮🇩',gram_sub:'Entraînez-vous sur les affixes indonésiens',
+ gram_choose:"Choisir un type d'exercice",gram_start:'▶ Démarrer (5 questions)',
+ gram_info:'<span>{n}</span> exercices · <span>{t}</span> types',
+ gram_tol:'Réponse tolérée !',gram_also_tol:'Aussi toléré :',
+ gram_review:'Exercices à revoir',replay_short:'Rejouer',types:'Types',
+ les_read:'<span>{d}</span> / {t} leçons lues',les_all:'← Toutes les leçons',les_train:"✏️ S'entraîner sur ce point",
+ les_done:'✓ Terminé',les_prev:'← Précédente',les_next:'Suivante →',
+ res_g_great:'🎉 Excellent !',res_g_ok:'👍 Pas mal !',res_g_poor:'💪 Continue !',
+ gram_tolcount:' (dont {n} toléré{s})',
+ bk_title:'Sauvegarde des données',bk_export:'↑ Exporter',bk_import:'↓ Importer',bk_restore:'Restaurer',
+ bk_ph:'Collez ici votre sauvegarde puis appuyez sur Restaurer',
+ bk_copied:'✓ Sauvegarde copiée dans le presse-papiers — collez-la dans une note.',
+ bk_select:'Sélectionnez le texte ci-dessus et copiez-le dans une note.',
+ bk_paste:'Collez votre sauvegarde puis appuyez sur Restaurer.',
+ bk_ok:'✓ Données restaurées ({n} éléments). Rechargement…',
+ bk_bad:'✗ Sauvegarde invalide — vérifiez le texte collé.'
+},
+en:{
+ nav_quiz:'Quiz',nav_quest:'Quest',nav_gram:'Grammar',nav_dict:'Dict',nav_stats:'Stats',
+ quiz_sub:'Translate from English into Indonesian',
+ choose_theme:'Choose a topic',word_count:'Number of words',src_lang:'Source language',
+ start_quiz:'Start quiz',words:'words',with_syn:'with synonyms',all_themes:'All topics',all:'All',
+ prev_warn:'<span class="warn">{n} words available</span> — quiz on all {q} topic words',
+ prev_ok:'<span>{n}</span> words available · <span>{q}</span> drawn at random',
+ question:'Question',ph_answer:'Answer in Indonesian…',btn_check:'Check',btn_next:'Next →',btn_results:'See results →',
+ fb_correct:'Correct!',fb_also:'Also valid:',fb_almost:'Almost!',fb_half:'+0.5 pt ({pct}% similar)',
+ fb_exact:'Exact answer:',fb_wrong:'Incorrect answer',fb_valid_pl:'Valid answers:',fb_valid_one:'The correct answer:',
+ syn_title:'Variant details',
+ res_great:'🎉 Excellent work!',res_ok:'👍 Not bad!',res_poor:'💪 Keep practicing!',
+ sfx_great:' — excellent!',sfx_ok:' — keep going!',sfx_poor:' — review below.',
+ res_approx:' (incl. {n} approximate)',
+ wrong_header:'Words to review',
+ btn_replay:'↻ Play again',btn_topics:'← Topics',btn_statsb:'📊 Stats',btn_home:'← Home',
+ q_next_level:'Next level →',q_replay:'↻ Replay level',q_map:'🗺️ Quest map',
+ q_done:' — 🏆 Topic complete!',q_unlocked:' — 🔓 Next level unlocked!',q_locked:' — 🔒 100% required to unlock the next level',
+ rev_again:'🔁 Review again ({n})',rev_none:'🎉 No more words to review!',
+ streak_days:'day{s} in a row',streak_active:'Streak going — come back tomorrow to keep it up!',
+ streak_yday:'Play today to extend your streak!',streak_none:'Start a session to begin your streak.',
+ streak_best:'Best',
+ today_continue:'Continue your quest',today_start:'Start a quest',today_level:'Level {x} / {y} · {n} words',
+ today_review:'🔁 <strong>Review my mistakes</strong> · <span class="review-count">{n} word{s}</span> →',
+ today_lesson:'Next lesson:',
+ quest_sub:'Progress topic by topic — 100% required to unlock the next level',
+ quest_summary:'<span>{d}</span> / {t} levels completed · {sz} words per level',
+ dict_title:'Dictionary',dict_sub:'{n} words organized by topic',dict_ph:'Search for a word…',dict_none:'No words found for',
+ dash_title:'Dashboard',dash_sub:'Your quiz session history',
+ dash_empty:'No sessions yet.<br>Take your first quiz!',
+ chart_title:'Progress (last 10 sessions)',
+ h_date:'Date',h_theme:'Topic',h_level:'Level',
+ lbl_sessions:'Sessions',lbl_avg:'Average',lbl_best:'Best',
+ pill_great:'Excellent',pill_ok:'Good',pill_poor:'Review',
+ lessons:'Lessons',exercises:'Exercises',gram_title:'Grammar 🇮🇩',gram_sub:'Practice Indonesian affixes',
+ gram_choose:'Choose an exercise type',gram_start:'▶ Start (5 questions)',
+ gram_info:'<span>{n}</span> exercises · <span>{t}</span> types',
+ gram_tol:'Accepted answer!',gram_also_tol:'Also accepted:',
+ gram_review:'Exercises to review',replay_short:'Play again',types:'Types',
+ les_read:'<span>{d}</span> / {t} lessons read',les_all:'← All lessons',les_train:'✏️ Practice this point',
+ les_done:'✓ Done',les_prev:'← Previous',les_next:'Next →',
+ res_g_great:'🎉 Excellent!',res_g_ok:'👍 Not bad!',res_g_poor:'💪 Keep going!',
+ gram_tolcount:' (incl. {n} accepted)',
+ bk_title:'Data backup',bk_export:'↑ Export',bk_import:'↓ Import',bk_restore:'Restore',
+ bk_ph:'Paste your backup here, then press Restore',
+ bk_copied:'✓ Backup copied to clipboard — paste it into a note.',
+ bk_select:'Select the text above and copy it into a note.',
+ bk_paste:'Paste your backup, then press Restore.',
+ bk_ok:'✓ Data restored ({n} items). Reloading…',
+ bk_bad:'✗ Invalid backup — check the pasted text.'
+}};
+const THEME_EN={
+ 'Adjectifs & Qualificatifs':'Adjectives & Qualifiers','Adverbes & Modificateurs':'Adverbs & Modifiers',
+ 'Aliments & Cuisine':'Food & Cooking','Animaux':'Animals','Art & Culture':'Art & Culture',
+ 'Conjonctions & Prépositions':'Conjunctions & Prepositions','Direction & Position':'Direction & Position',
+ 'Économie & Finances':'Economy & Finance','Éducation & Apprentissage':'Education & Learning',
+ 'Langue & Communication':'Language & Communication','Lieux & Bâtiments':'Places & Buildings',
+ 'Nature & Environnement':'Nature & Environment','Objets & Matériaux':'Objects & Materials',
+ 'Pays & Géographie':'Countries & Geography','Personnes & Rôles Sociaux':'People & Social Roles',
+ 'Politique & Gouvernement':'Politics & Government','Pronoms':'Pronouns',
+ 'Quantificateurs & Mesures':'Quantifiers & Measures','Religion & Spiritualité':'Religion & Spirituality',
+ 'Santé & Corps':'Health & Body','Science & Technologie':'Science & Technology',
+ 'Sentiments & Émotions':'Feelings & Emotions','Société & Communauté':'Society & Community',
+ 'Sport & Activités':'Sports & Activities','Temps & Calendrier':'Time & Calendar',
+ 'Transport & Voyage':'Transport & Travel','Vêtements & Accessoires':'Clothing & Accessories',
+ 'Divers':'Miscellaneous','Verbes de base':'Base verbs','Verbes en ber-':'ber- verbs','Verbes en me-':'me- verbs',
+ 'Verbes en di-':'di- verbs','Verbes en ter-':'ter- verbs','Verbes en me-...-kan':'me-...-kan verbs',
+ 'Verbes en di-...-kan':'di-...-kan verbs','Verbes en me-...-i':'me-...-i verbs','Verbes en di-...-i':'di-...-i verbs',
+ 'Verbes en memper-':'memper- verbs','Verbes en diper-':'diper- verbs','Verbes répétés':'Reduplicated verbs',
+ 'Révision':'Review'
+};
+const CLASS_EN={nom:'noun',verbe:'verb',adjectif:'adjective',adverbe:'adverb',pronom:'pronoun',
+ 'préposition':'preposition',conjonction:'conjunction',interjection:'interjection',expression:'expression',
+ nombre:'number',particule:'particle','déterminant':'determiner'};
+const GRAM_TYPES_EN={
+ transformation:{label:'Transformation (me-)',desc:'Form the affixed verb from the base word'},
+ nominalisation:{label:'Nominalization',desc:'Form a derived noun (-an, pe-, ke-…-an)'},
+ sens_affixe:{label:'Affix meanings',desc:'Identify the meaning of an affixed form (ter-, ber-, di-)'},
+ phrase_a_trous:{label:'Fill in the blank (MCQ)',desc:'Pick the right affixed form among 3 options'},
+ actif_passif:{label:'Active ↔ Passive',desc:'Turn a sentence from active to passive voice or back'}
+};
+function i18(k){return (I18N[srcLang]&&I18N[srcLang][k])||I18N.fr[k]||k;}
+function i18f(k,vars){let s=i18(k);Object.entries(vars||{}).forEach(([kk,v])=>{s=s.split('{'+kk+'}').join(v);});return s;}
+function i18Theme(name){return srcLang==='en'?(THEME_EN[name]||name):name;}
+function i18Class(c){return srcLang==='en'?(CLASS_EN[c]||c):c;}
+function i18Gram(type,field){if(srcLang==='en'&&GRAM_TYPES_EN[type])return GRAM_TYPES_EN[type][field];return GRAM_TYPES[type]?[GRAM_TYPES[type].label,GRAM_TYPES[type].desc][field==='label'?0:1]:type;}
+function plural(n){return n>1?'s':'';}
+function dateLocale(){return srcLang==='en'?'en-GB':'fr-FR';}
+
+function applyLangUI(){
+  const set=(sel,txt)=>{const e=document.querySelector(sel);if(e)e.innerHTML=txt;};
+  set('#tab-quiz .nav-lb',i18('nav_quiz'));
+  set('#tab-quest .nav-lb',i18('nav_quest'));
+  set('#tab-gram .nav-lb',i18('nav_gram'));
+  set('#tab-dict .nav-lb',i18('nav_dict'));
+  set('#tab-dash .nav-lb',i18('nav_stats'));
+  const lbls=document.querySelectorAll('#setup-panel .section-lbl');
+  if(lbls[0])lbls[0].textContent=i18('choose_theme');
+  if(lbls[1])lbls[1].textContent=i18('word_count');
+  if(lbls[2])lbls[2].textContent=i18('src_lang');
+  set('#setup-panel .setup-footer .btn','&#9654; '+i18('start_quiz'));
+  const ai=document.getElementById('answer-input');if(ai)ai.placeholder=i18('ph_answer');
+  const gi=document.getElementById('gram-input');if(gi)gi.placeholder=i18('ph_answer');
+  set('#submit-btn',i18('btn_check'));
+  set('#gram-submit-btn',i18('btn_check'));
+  set('#quest .sub',i18('quest_sub'));
+  set('#dictionnaire h1',i18('dict_title'));
+  set('#dict-sub',i18f('dict_sub',{n:VOCABULARY.length}));
+  const dsr=document.getElementById('dict-search');if(dsr)dsr.placeholder=i18('dict_ph');
+  set('#dashboard h1',i18('dash_title'));
+  set('#dash-sub',i18('dash_sub'));
+  const de=document.querySelector('#dash-empty p');if(de)de.innerHTML=i18('dash_empty');
+  set('.chart-wrap h3',i18('chart_title'));
+  const ths=document.querySelectorAll('.history-table th');
+  if(ths.length===5){ths[0].textContent=i18('h_date');ths[1].textContent=i18('h_theme');ths[4].textContent=i18('h_level');}
+  set('#seg-lecons','&#128214; '+i18('lessons'));
+  set('#seg-exos','&#9999;&#65039; '+i18('exercises'));
+  const gsh=document.querySelector('#gram-setup .setup-header h1');if(gsh)gsh.textContent=i18('gram_title');
+  const gsp=document.querySelector('#gram-setup .setup-header p');if(gsp)gsp.textContent=i18('gram_sub');
+  const glb=document.querySelector('#gram-setup .section-lbl');if(glb)glb.textContent=i18('gram_choose');
+  const gbtn=document.querySelector('#gram-setup .setup-footer .btn');if(gbtn)gbtn.innerHTML=i18('gram_start');
+  const gres=document.querySelectorAll('#gram-results .results-actions .btn');
+  if(gres[0])gres[0].innerHTML='&#8635; '+i18('replay_short');
+  if(gres[1])gres[1].innerHTML='&#8592; '+i18('types');
+  set('.syn-title',i18('syn_title'));
+  const bk=document.querySelector('.backup-wrap h3');if(bk)bk.textContent=i18('bk_title');
+  const bkb=document.querySelectorAll('.backup-actions .btn');
+  if(bkb[0])bkb[0].innerHTML=i18('bk_export');
+  if(bkb[1])bkb[1].innerHTML=i18('bk_import');
+  if(bkb[2])bkb[2].textContent=i18('bk_restore');
+  const ba=document.getElementById('backup-area');if(ba)ba.placeholder=i18('bk_ph');
+  const gg=document.getElementById('gram-type-grid');
+  if(gg&&gg.children.length)initGrammar();
+}
+
 // Clé de progression quest par langue (l'existant sans préfixe = piste anglaise)
 function qk(theme,li){return theme+'|'+li;}
 function getLastQ(){
@@ -1578,14 +1770,12 @@ function renderToday(){
   const activeToday=s.last===t;
   const alive=activeToday||s.last===y;
   const count=alive?(s.count||0):0;
-  const msg=activeToday?'Série en cours — reviens demain pour continuer !'
-    :s.last===y?'Joue aujourd\'hui pour prolonger ta série !'
-    :'Lance une session pour démarrer ta série.';
+  const msg=activeToday?i18('streak_active'):s.last===y?i18('streak_yday'):i18('streak_none');
   let html=`<div class="streak-row${activeToday?' active':''}">
     <span class="streak-flame">&#128293;</span>
     <span class="streak-num">${count}</span>
-    <span class="streak-meta">jour${count>1?'s':''} d'affilée<br>${msg}</span>
-    ${s.best?`<span class="streak-best">Record ${s.best}</span>`:''}
+    <span class="streak-meta">${i18f('streak_days',{s:plural(count)})}<br>${msg}</span>
+    ${s.best?`<span class="streak-best">${i18('streak_best')} ${s.best}</span>`:''}
   </div>`;
   const q=nextQuestTarget();
   if(q){
@@ -1594,9 +1784,9 @@ function renderToday(){
     html+=`<div class="continue-card" onclick="startQuestLevel(${q.ti},${q.li})">
       <span class="continue-emoji">${THEME_EMOJIS[q.theme]||'&#128204;'}</span>
       <div class="continue-main">
-        <div class="continue-kicker">${started?'Continue ta qu&ecirc;te':'Commence une qu&ecirc;te'}</div>
-        <div class="continue-title">${q.theme}</div>
-        <div class="continue-sub">Niveau ${q.li+1} / ${q.total} &middot; ${q.size} mots</div>
+        <div class="continue-kicker">${started?i18('today_continue'):i18('today_start')}</div>
+        <div class="continue-title">${i18Theme(q.theme)}</div>
+        <div class="continue-sub">${i18f('today_level',{x:q.li+1,y:q.total,n:q.size})}</div>
         <div class="continue-bar"><div class="continue-bar-fill" style="width:${pctT}%"></div></div>
       </div>
       <span class="continue-go">&#9654;</span>
@@ -1604,14 +1794,14 @@ function renderToday(){
   }
   const nrev=reviewCount();
   if(nrev){
-    html+=`<button class="review-card" onclick="startReviewQuiz()">&#128257; <strong>R&eacute;viser mes erreurs</strong> &middot; <span class="review-count">${nrev} mot${nrev>1?'s':''}</span> &#8594;</button>`;
+    html+=`<button class="review-card" onclick="startReviewQuiz()">${i18f('today_review',{n:nrev,s:plural(nrev)})}</button>`;
   }
   const read=getLessonsRead();
   const nextL=LESSONS.findIndex(l=>!read[l.id]);
   if(nextL!==-1){
     const l=LESSONS[nextL];
     html+=`<button class="today-lesson" onclick="showTab('grammaire');setGramView('lecons');openLesson(${nextL})">
-      ${l.emoji} Le&ccedil;on suivante : <strong>${l.titre}</strong> &#8594;</button>`;
+      ${l.emoji} ${i18('today_lesson')} <strong>${l.titre}</strong> &#8594;</button>`;
   }
   el.innerHTML=html;
 }
@@ -1630,7 +1820,7 @@ function exportBackup(){
   try{copied=document.execCommand('copy');}catch(e){}
   const msg=document.getElementById('backup-msg');
   msg.className='backup-msg ok';
-  msg.textContent=copied?'✓ Sauvegarde copiée dans le presse-papiers — collez-la dans une note.':'Sélectionnez le texte ci-dessus et copiez-le dans une note.';
+  msg.textContent=copied?i18('bk_copied'):i18('bk_select');
 }
 function showImport(){
   const ta=document.getElementById('backup-area');
@@ -1638,7 +1828,7 @@ function showImport(){
   document.getElementById('backup-import-btn').style.display='inline-flex';
   const msg=document.getElementById('backup-msg');
   msg.className='backup-msg';
-  msg.textContent='Collez votre sauvegarde puis appuyez sur Restaurer.';
+  msg.textContent=i18('bk_paste');
 }
 function importBackup(){
   const msg=document.getElementById('backup-msg');
@@ -1651,11 +1841,11 @@ function importBackup(){
     });
     if(!n)throw new Error('vide');
     msg.className='backup-msg ok';
-    msg.textContent='✓ Données restaurées ('+n+' éléments). Rechargement…';
+    msg.textContent=i18f('bk_ok',{n:n});
     setTimeout(()=>location.reload(),900);
   }catch(e){
     msg.className='backup-msg err';
-    msg.textContent='✗ Sauvegarde invalide — vérifiez le texte collé.';
+    msg.textContent=i18('bk_bad');
   }
 }
 
@@ -1675,6 +1865,7 @@ function showTab(tab){
 }
 
 initApp();
+applyLangUI();
 renderToday();
 </script>
 </body>
