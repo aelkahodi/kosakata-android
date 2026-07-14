@@ -1378,7 +1378,22 @@ function speak(text){
     speechSynthesis.speak(u);
   }catch(e){}
 }
-function speakWord(id){const w=VOCABULARY.find(x=>x.id===id);if(w)speak(w.indonesien);}
+let _audioEl=null;
+function playLocal(src,fallback){
+  try{
+    if(_audioEl)_audioEl.pause();
+    const a=new Audio(src);
+    _audioEl=a;
+    a.onerror=()=>{if(fallback)fallback();};
+    const p=a.play();
+    if(p&&p.catch)p.catch(()=>{if(fallback)fallback();});
+  }catch(e){if(fallback)fallback();}
+}
+function speakWord(id){
+  const w=VOCABULARY.find(x=>x.id===id);
+  if(!w)return;
+  playLocal('audio/'+id+'.m4a',()=>speak(w.indonesien));
+}
 function speakExample(id){const w=VOCABULARY.find(x=>x.id===id);if(w&&w.example_id)speak(w.example_id);}
 
 let _recActive=false;
