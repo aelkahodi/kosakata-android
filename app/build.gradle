@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace 'com.kosakata.app'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.kosakata.app"
         minSdk 21
-        targetSdk 34
+        targetSdk 35
         // versionCode horodaté (yyMMddHH) : chaque build est une mise à jour
         // valide de la précédente, l'app s'installe par-dessus sans désinstaller
         versionCode Integer.parseInt(new Date().format('yyMMddHH'))
