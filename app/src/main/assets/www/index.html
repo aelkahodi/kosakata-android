@@ -1724,7 +1724,7 @@ function openPaywall(){
     '📖 '+LESSONS.length+t.f_lessons+GRAMMAR_DATA.length+t.f_ex,
     t.f_audio, t.f_once
   ].map(x=>'<li>'+x+'</li>').join('');
-  document.getElementById('pw-buy').textContent=t.buy+' — '+(_pwPrice||t.price);
+  document.getElementById('pw-buy').textContent=_pwPrice?(t.buy+' — '+_pwPrice):t.buy;
   document.getElementById('pw-restore').textContent=t.restore;
   document.getElementById('paywall').style.display='flex';
 }
