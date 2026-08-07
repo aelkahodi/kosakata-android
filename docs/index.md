@@ -1,5 +1,7 @@
 # Politique de confidentialité — Kosakata
 
+> Version officielle : https://katalab.eu/privacy/kosakata.html
+
 *Dernière mise à jour : juillet 2026*
 
 **Kosakata** (« l'application ») est éditée par KataLab. Cette politique décrit le traitement des données lors de l'utilisation de l'application.
@@ -27,7 +29,7 @@ L'application ne collecte aucune donnée, y compris pour les utilisateurs mineur
 
 ## Contact
 
-Pour toute question : **[EMAIL À COMPLÉTER]**
+Pour toute question : **contact@katalab.eu**
 
 ---
 
@@ -41,4 +43,4 @@ Pour toute question : **[EMAIL À COMPLÉTER]**
 
 The app does not collect, transmit or share **any personal data**. It works fully offline: progress and statistics are stored **on your device only**; the microphone is used solely when you tap the mic button, with speech recognition handled by your device's own service; no account, no ads, no trackers, no third-party analytics. In-app purchases, if any, are processed by Google Play. All local data is deleted when you uninstall the app.
 
-Contact: **[EMAIL TO BE COMPLETED]**
+Contact: **contact@katalab.eu**

@@ -42,7 +42,7 @@ Cocher les deux déclarations (règles du programme + lois américaines sur l'ex
 
 ### Politique de confidentialité
 ```
-https://aelkahodi.github.io/kosakata-android/
+https://katalab.eu/privacy/kosakata.html
 ```
 
 ### Accès à l'application
