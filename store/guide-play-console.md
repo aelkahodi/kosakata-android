@@ -120,10 +120,10 @@ d'achat s'affiche sans montant.
 4. Notes de version :
    ```
    <fr-FR>
-   Première version : 1 849 mots, mode Quest, leçons de grammaire, audio hors ligne.
+   Première version : 2 000 mots, mode Quest, leçons de grammaire, audio hors ligne.
    </fr-FR>
    <en-US>
-   First release: 1,849 words, Quest mode, grammar lessons, offline audio.
+   First release: 2,000 words, Quest mode, grammar lessons, offline audio.
    </en-US>
    ```
 5. **Pays de diffusion** : tous (ou au minimum France, Belgique, Suisse, Canada, Indonésie)
